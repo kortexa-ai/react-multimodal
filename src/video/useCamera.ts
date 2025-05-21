@@ -43,7 +43,8 @@ export const useCamera = ({
 
     useEffect(() => {
         getCameraDevices();
-    }, [getCameraDevices]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Call only on mount
 
     // Effect for mobile default facing mode (can be kept or removed based on preference)
     useEffect(() => {
