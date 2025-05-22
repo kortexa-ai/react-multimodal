@@ -1,11 +1,14 @@
-import { MediaProvider } from "../../../index.ts";
+import { MediaProvider } from "../../../index";
 import ProviderDemo from "./ProviderDemo.jsx";
 
 function App() {
     return (
         <MediaProvider
-            // Optional: Add cameraProps or microphoneProps if needed by MediaProvider
-            // cameraProps={{ initialFacingMode: 'user' }}
+            cameraProps={{
+                requestedWidth: 1280,
+                requestedHeight: 720,
+                // initialFacingMode: 'user' // This could also be here if needed
+            }}
             // microphoneProps={{ autoStart: false }}
         >
             <ProviderDemo />

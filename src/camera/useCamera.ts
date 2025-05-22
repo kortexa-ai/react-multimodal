@@ -5,6 +5,9 @@ import type { FacingMode } from './types';
 export interface UseCameraProps {
     defaultFacingMode?: FacingMode;
     defaultDeviceId?: string;
+    requestedWidth?: number;
+    requestedHeight?: number;
+    requestedAspectRatio?: number;
     onStreamChange?: (stream: MediaStream | null) => void;
     onError?: (error: string) => void;
 }
@@ -12,6 +15,9 @@ export interface UseCameraProps {
 export const useCamera = ({
     defaultFacingMode = 'user',
     defaultDeviceId,
+    requestedWidth,
+    requestedHeight,
+    requestedAspectRatio,
     onStreamChange,
     onError,
 }: UseCameraProps = {}) => {
@@ -69,14 +75,25 @@ export const useCamera = ({
         }
 
         try {
-            const constraints: MediaStreamConstraints = {
-                video: {
-                    deviceId: targetDeviceId ? { exact: targetDeviceId } : undefined,
-                    facingMode: !targetDeviceId ? facingMode : undefined, // Only use facingMode if no specific deviceId
-                    width: { ideal: 1024 },
-                    height: { ideal: 1024 },
-                },
+            const videoConstraints: MediaTrackConstraints = {
+                deviceId: targetDeviceId ? { exact: targetDeviceId } : undefined,
+                facingMode: !targetDeviceId ? facingMode : undefined, // Only use facingMode if no specific deviceId
             };
+
+            if (requestedWidth) {
+                videoConstraints.width = { ideal: requestedWidth };
+            }
+            if (requestedHeight) {
+                videoConstraints.height = { ideal: requestedHeight };
+            }
+            if (requestedAspectRatio) {
+                videoConstraints.aspectRatio = { ideal: requestedAspectRatio };
+            }
+
+            const constraints: MediaStreamConstraints = {
+                video: Object.keys(videoConstraints).length > 0 ? videoConstraints : true,
+            };
+
             const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(mediaStream);
             setIsOn(true);
@@ -96,7 +113,7 @@ export const useCamera = ({
                 }
             }
         }
-    }, [currentDeviceId, facingMode, onStreamChange, onError, availableDevices, getCameraDevices]);
+    }, [currentDeviceId, facingMode, onStreamChange, onError, availableDevices, getCameraDevices, requestedWidth, requestedHeight, requestedAspectRatio]);
 
     const stopCamera = useCallback(() => {
         if (stream) {

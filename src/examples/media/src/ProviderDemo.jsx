@@ -1,270 +1,66 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import * as THREE from "three";
-import { useMediaControl } from "../../../index.ts";
+import { useEffect, useState, useCallback } from "react";
+import { useMediaControl } from "../../../index";
 import StatusDot from '../../common/StatusDot';
+import { Camera, CameraOff, Mic, MicOff, Play, Square } from 'lucide-react';
+import CameraView from '../../common/CameraView';
+import MicrophoneView from '../../common/MicrophoneView';
 
 const ProviderDemo = () => {
-    // Refs and state for Camera Visualization
-    const cameraMountRef = useRef(null);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
-
-    // Refs and state for Microphone Visualization
-    const micMountRef = useRef(null);
     const [micErrorMessage, setMicErrorMessage] = useState("");
 
     const media = useMediaControl();
-    const cam = media?.cam;
-    const mic = media?.mic;
 
-    // Effect for Camera Visualization
     useEffect(() => {
-        if (!cameraMountRef.current || !media || !media.cam) return;
-
-        const currentMount = cameraMountRef.current;
-        currentMount.innerHTML = ""; // Clear previous renderer
-
-        const videoElement = document.createElement('video');
-        videoElement.setAttribute('playsinline', '');
-        videoElement.setAttribute('webkit-playsinline', '');
-        videoElement.muted = true;
-        videoElement.autoplay = true;
-
-        let scene, camera, renderer, videoTexture, videoPlane, animationFrameId;
-
-        const initThreeJS = (stream) => {
-            if (!currentMount) return; // Ensure mount point is still there
-            currentMount.innerHTML = ""; // Clear again just in case
-
-            videoElement.srcObject = stream;
-            videoElement.play().catch(e => console.error("Error playing video element:", e));
-
-            const width = currentMount.clientWidth;
-            const height = currentMount.clientHeight;
-
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-            camera.position.z = 1;
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(width, height);
-            currentMount.appendChild(renderer.domElement);
-
-            videoTexture = new THREE.VideoTexture(videoElement);
-            const videoAspect = videoElement.videoWidth / videoElement.videoHeight;
-            const planeHeight = 1;
-            const planeWidth = planeHeight * videoAspect;
-
-            const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-            const material = new THREE.MeshBasicMaterial({ map: videoTexture });
-            videoPlane = new THREE.Mesh(geometry, material);
-            scene.add(videoPlane);
-
-            camera.lookAt(videoPlane.position);
-
-            const animate = () => {
-                animationFrameId = requestAnimationFrame(animate);
-                if (videoTexture) videoTexture.needsUpdate = true;
-                renderer.render(scene, camera);
-            };
-            animate();
-        };
-
-        const handleStreamChange = (stream) => {
-            if (stream) {
-                if (!renderer) { // If Three.js isn't initialized yet
-                    initThreeJS(stream);
-                } else { // If already initialized, just update srcObject
-                    videoElement.srcObject = stream;
-                    videoElement.play().catch(e => console.error("Error playing video element on stream change:", e));
-                }
-            } else {
-                // Cleanup Three.js if stream is removed
-                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                if (videoElement.srcObject) {
-                    const tracks = videoElement.srcObject.getTracks();
-                    tracks.forEach(track => track.stop());
-                    videoElement.srcObject = null;
-                }
-                if (renderer && renderer.domElement && currentMount.contains(renderer.domElement)) {
-                    currentMount.removeChild(renderer.domElement);
-                }
-                if (videoTexture) videoTexture.dispose();
-                if (videoPlane && videoPlane.geometry) videoPlane.geometry.dispose();
-                if (videoPlane && videoPlane.material) videoPlane.material.dispose();
-                if (renderer) renderer.dispose();
-                scene = camera = renderer = videoTexture = videoPlane = null;
-                currentMount.innerHTML = "Camera feed stopped"; // Placeholder
-            }
-        };
-
-        // Initial setup if stream is already available
-        if (media.cam.stream) {
-            initThreeJS(media.cam.stream);
+        if (media?.cam?.error) {
+            setCameraErrorMessage(media.cam.error);
+        } else {
+            setCameraErrorMessage("");
         }
+    }, [media?.cam?.error]);
 
-        const streamListenerId = media.cam.addStreamChangedListener(handleStreamChange);
-        const errorListenerId = media.cam.addErrorListener((error) => {
-            console.error("Camera Error in Media Example:", error);
-            // Optionally display this error in the UI
-        });
-
-        const handleResize = () => {
-            if (camera && renderer && currentMount) {
-                const newWidth = currentMount.clientWidth;
-                const newHeight = currentMount.clientHeight;
-                camera.aspect = newWidth / newHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
-            }
-        };
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-            media.cam.removeStreamChangedListener(streamListenerId);
-            media.cam.removeErrorListener(errorListenerId);
-            window.removeEventListener('resize', handleResize);
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            if (videoElement.srcObject) {
-                 const tracks = videoElement.srcObject.getTracks();
-                 tracks.forEach(track => track.stop());
-                 videoElement.srcObject = null;
-            }
-            if (renderer && renderer.domElement && currentMount.contains(renderer.domElement)) {
-                currentMount.removeChild(renderer.domElement);
-            }
-            if (videoTexture) videoTexture.dispose();
-            if (videoPlane && videoPlane.geometry) videoPlane.geometry.dispose();
-            if (videoPlane && videoPlane.material) videoPlane.material.dispose();
-            if (renderer) renderer.dispose();
-        };
-    }, [media, media?.cam]); // Depend on media.cam
-
-    // Effect for Microphone Visualization
     useEffect(() => {
-        if (!micMountRef.current || !media || !media.mic) return;
-
-        const currentMount = micMountRef.current;
-        currentMount.innerHTML = ""; // Clear previous renderer
-
-        let scene, camera, renderer, bar, animationFrameId;
-
-        const initThreeJS = () => {
-            const width = currentMount.clientWidth;
-            const height = currentMount.clientHeight;
-
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-            camera.position.set(0, 0, 2.5); // Adjusted camera position
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(width, height);
-            renderer.setClearColor(0x000000, 0); // Transparent background
-            currentMount.appendChild(renderer.domElement);
-
-            const geometry = new THREE.BoxGeometry(1, 0.1, 1); // Initial small height
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            bar = new THREE.Mesh(geometry, material);
-            scene.add(bar);
-
-            const animate = () => {
-                animationFrameId = requestAnimationFrame(animate);
-                renderer.render(scene, camera);
-            };
-            animate();
-        };
-
-        initThreeJS(); // Initialize Three.js scene immediately
-
-        const handleAudioData = (data) => {
-            if (bar && data && data.length > 0) {
-                let sumSquares = 0.0;
-                for (const amplitude of data) {
-                    sumSquares += amplitude * amplitude;
-                }
-                const rms = Math.sqrt(sumSquares / data.length);
-                const maxHeight = 5; // Max height of the bar
-                const newHeight = Math.min(Math.max(0.1, rms * maxHeight * 20), maxHeight); // Scale and clamp height
-                
-                bar.scale.y = newHeight / 0.1; // Scale based on initial geometry height of 0.1
-                bar.position.y = (newHeight / 2) - (0.1 / 2); // Adjust position based on new height and initial geometry center
-            }
-        };
-
-        const audioDataListenerId = media.mic.addAudioDataListener(handleAudioData);
-        const errorListenerId = media.mic.addErrorListener((error) => {
-            console.error("Microphone Error in Media Example:", error);
-            // Optionally display this error in the UI
-        });
-
-        const handleResize = () => {
-            if (camera && renderer && currentMount) {
-                const newWidth = currentMount.clientWidth;
-                const newHeight = currentMount.clientHeight;
-                camera.aspect = newWidth / newHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
-            }
-        };
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-            media.mic.removeAudioDataListener(audioDataListenerId);
-            media.mic.removeErrorListener(errorListenerId);
-            window.removeEventListener('resize', handleResize);
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            if (renderer && renderer.domElement && currentMount.contains(renderer.domElement)) {
-                currentMount.removeChild(renderer.domElement);
-            }
-            if (bar && bar.geometry) bar.geometry.dispose();
-            if (bar && bar.material) bar.material.dispose();
-            if (renderer) renderer.dispose();
-        };
-    }, [media, media?.mic]); // Depend on media.mic
+        if (media?.audio?.error) {
+            setMicErrorMessage(media.audio.error);
+        } else {
+            setMicErrorMessage("");
+        }
+    }, [media?.audio?.error]);
 
     const handleToggleCamera = useCallback(async () => {
         setCameraErrorMessage("");
-        if (!cam) return;
-        if (cam.isOn) {
-            cam.stopCamera();
+        if (!media.cam) return;
+        if (media.cam.isOn) {
+            media.cam.stopCamera();
         } else {
             try {
-                await cam.startCamera();
+                await media.cam.startCamera();
             } catch (err) {
                 setCameraErrorMessage(err.message || "Failed to start camera.");
             }
         }
-    }, [cam]);
-
-    const handleFlipCamera = useCallback(async () => {
-        if (!cam || !cam.isOn) return;
-        try {
-            await cam.flipCamera();
-        } catch (err) {
-            setCameraErrorMessage(err.message || "Failed to flip camera.");
-        }
-    }, [cam]);
+    }, [media.cam]);
 
     const handleToggleMicrophone = useCallback(async () => {
         setMicErrorMessage("");
-        if (!mic || typeof mic.isRecording !== 'function') return;
-        if (mic.isRecording()) {
-            mic.stop();
+        if (!media.mic || typeof media.mic.isRecording !== 'function') return;
+        if (media.mic.isRecording()) {
+            media.mic.stop();
         } else {
             try {
-                await mic.start();
+                await media.mic.start();
             } catch (err) {
                 console.error("[MediaDemo] Error calling mic.start():", err);
                 setMicErrorMessage(err.message || "Failed to start microphone.");
             }
         }
-    }, [mic]);
+    }, [media.mic]);
 
     const handleStartAllMedia = useCallback(async () => {
         if (media && media.startMedia) {
             try {
                 await media.startMedia();
             } catch (err) {
-                // Handle or display error appropriately
                 console.error("[MediaDemo] Error starting all media:", err);
             }
         }
@@ -276,63 +72,79 @@ const ProviderDemo = () => {
         }
     }, [media]);
 
-    const handleToggleAllMedia = useCallback(async () => {
-        if (media && media.toggleMedia) {
-            try {
-                await media.toggleMedia();
-            } catch (err) {
-                console.error("[MediaDemo] Error toggling all media:", err);
-            }
-        }
-    }, [media]);
-
     if (!media) {
-        return <div>Loading media controls...</div>;
+        return <div className="card-container"><p className="status-text">Loading media controls...</p></div>;
     }
 
     return (
-        <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px', maxWidth: '650px', margin: '20px auto', backgroundColor: '#f9f9f9' }}>
-            {/* Combined Media Controls */}
-            <div style={{ marginBottom: '20px', textAlign: 'center' }}> 
-                <button onClick={handleStartAllMedia} disabled={!media || (media.isAudioActive && media.isVideoActive)} style={{ marginRight: '10px' }}>
-                    Start All Media
-                </button>
-                <button onClick={handleStopAllMedia} disabled={!media || (!media.isAudioActive && !media.isVideoActive)} style={{ marginRight: '10px' }}>
-                    Stop All Media
-                </button>
-                <button onClick={handleToggleAllMedia} disabled={!media}>
-                    Toggle All Media
-                </button>
-                {media.mediaError && <div className="error" style={{color: 'red', marginTop: '10px'}}>Media Error: {media.mediaError}</div>}
+        <div className="card-container">
+            <h2 className="card-title">Media Provider Demo</h2>
+
+            <div className="camera-view-container">
+                <CameraView stream={media.videoStream} />
             </div>
+            {cameraErrorMessage && (
+                <p className="error-message">{cameraErrorMessage}</p>
+            )}
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}> 
-                {/* Camera Section */}
-                <div style={{ width: '400px', height: '300px', border: '1px solid #ccc', marginRight: '10px', display: 'flex', flexDirection: 'column' }}> 
-                    <div ref={cameraMountRef} style={{ width: '100%', flexGrow: 1, backgroundColor: '#000' }}></div> {/* Canvas takes available space */}
-                    <div style={{ padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px' /* Gap above buttons */ }}>
-                        <button onClick={handleToggleCamera} disabled={!cam} style={{ marginRight: '5px' }}>
-                            {cam && cam.isOn ? "Stop Camera" : "Start Camera"}
-                        </button>
-                        <button onClick={handleFlipCamera} disabled={!cam || !cam.isOn} style={{ marginRight: '5px' }}>
-                            Flip Camera
-                        </button>
-                        {cam && <StatusDot isActive={cam.isOn} />}
-                    </div>
-                    {cameraErrorMessage && <div className="error" style={{color: 'red', marginTop: '5px', textAlign: 'center'}}>{cameraErrorMessage}</div>}
-                </div>
+            <MicrophoneView mic={media.mic} />
+            {micErrorMessage && (
+                <p className="error-message">{micErrorMessage}</p>
+            )}
 
-                {/* Microphone Section */}
-                <div style={{ width: '200px', height: '300px', border: '1px solid #ccc', display: 'flex', flexDirection: 'column' }}> 
-                    <div ref={micMountRef} style={{ width: '100%', flexGrow: 1, backgroundColor: '#111' }}></div> {/* Canvas takes available space */}
-                    <div style={{ padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px' /* Gap above buttons */ }}>
-                        <button onClick={handleToggleMicrophone} disabled={!mic} style={{ marginRight: '5px' }}>
-                            {mic && typeof mic.isRecording === 'function' && mic.isRecording() ? "Stop Microphone" : "Start Microphone"}
-                        </button>
-                        {mic && <StatusDot isActive={mic.isRecording()} />}
-                    </div>
-                    {micErrorMessage && <div className="error" style={{color: 'red', marginTop: '5px', textAlign: 'center'}}>{micErrorMessage}</div>}
-                </div>
+            <div className="button-row bottom-button-row">
+                <button
+                    onClick={handleStartAllMedia}
+                    disabled={
+                        !media || (media.isAudioActive && media.isVideoActive)
+                    }
+                    title="Start All Media"
+                >
+                    <Play />
+                </button>
+                <button
+                    onClick={handleStopAllMedia}
+                    disabled={
+                        !media || (!media.isAudioActive && !media.isVideoActive)
+                    }
+                    title="Stop All Media"
+                >
+                    <Square />
+                </button>
+
+                <span className="control-separator"></span>
+
+                <button
+                    onClick={handleToggleCamera}
+                    disabled={!media.cam}
+                    title={media.cam && media.cam.isOn ? "Stop Camera" : "Start Camera"}
+                >
+                    {media.cam && media.cam.isOn ? <CameraOff /> : <Camera />}
+                </button>
+                {media.cam && <StatusDot isActive={media.cam.isOn} />}
+
+                <span className="control-separator"></span>
+
+                <button
+                    onClick={handleToggleMicrophone}
+                    disabled={!media.mic}
+                    title={
+                        media.mic &&
+                        typeof media.mic.isRecording === "function" &&
+                        media.mic.isRecording()
+                            ? "Stop Microphone"
+                            : "Start Microphone"
+                    }
+                >
+                    {media.mic &&
+                    typeof media.mic.isRecording === "function" &&
+                    media.mic.isRecording() ? (
+                        <MicOff />
+                    ) : (
+                        <Mic />
+                    )}
+                </button>
+                {media.mic && <StatusDot isActive={media.mic.isRecording()} />}
             </div>
         </div>
     );
