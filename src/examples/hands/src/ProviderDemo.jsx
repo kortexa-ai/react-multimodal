@@ -72,7 +72,7 @@ function ProviderDemo() {
         if (!hands) return;
 
         const handleData = (data) => {
-            console.log("Hands data received in demo:", data);
+            console.log(`Hands data at ${new Date().toLocaleTimeString()}:`, data);
             setDetectedHandData(data);
             setIsHandTracking(true);
             setHandsErrorMessage("");

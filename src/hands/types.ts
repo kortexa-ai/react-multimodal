@@ -24,7 +24,7 @@ export interface MediaPipeHandsResults {
     multiHandLandmarks: HandLandmark[][];
     multiHandWorldLandmarks: HandLandmark[][];
     multiHandedness: Handedness[];
-    image?: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement; // The image source processed
+    image?: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | ImageBitmap; // The image source processed
 }
 
 // Our processed and stored hands data

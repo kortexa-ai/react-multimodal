@@ -32,6 +32,7 @@ export function useHandsControl(props?: UseHandsProps): HandsControl {
     const animationFrameIdRef = useRef<number | null>(null);
 
     const [isTracking, setIsTracking] = useState<boolean>(false);
+    const isTrackingRef = useRef(isTracking); // Ref for isTracking
     const [handsData, setHandsData] = useState<HandsData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +41,10 @@ export function useHandsControl(props?: UseHandsProps): HandsControl {
     const startListenersRef = useRef<Map<string, () => void>>(new Map());
     const stopListenersRef = useRef<Map<string, () => void>>(new Map());
 
+    useEffect(() => { // Keep the ref updated
+        isTrackingRef.current = isTracking;
+    }, [isTracking]);
+
     const processResults = useCallback((results: MediaPipeHandsResults) => {
         const newDetectedHands: DetectedHand[] = [];
         if (results.multiHandLandmarks && results.multiHandedness) {
@@ -47,7 +52,7 @@ export function useHandsControl(props?: UseHandsProps): HandsControl {
                 const landmarks = results.multiHandLandmarks[i];
                 const worldLandmarks = results.multiHandWorldLandmarks?.[i];
                 const handedness = results.multiHandedness[i]; // This is an array in MP, but usually one entry
-                
+
                 if (landmarks && handedness) {
                     newDetectedHands.push({
                         landmarks: landmarks as HandLandmark[], // Assuming direct compatibility or map if needed
@@ -87,26 +92,33 @@ export function useHandsControl(props?: UseHandsProps): HandsControl {
 
     const sendFrame = useCallback(async () => {
         if (!videoElementRef.current || !handsRef.current || videoElementRef.current.paused || videoElementRef.current.ended) {
-            if (isTracking) {
+            if (isTrackingRef.current) {
                 animationFrameIdRef.current = requestAnimationFrame(sendFrame);
             }
             return;
         }
+
         try {
             if (videoElementRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-                 await handsRef.current.send({ image: videoElementRef.current });
+                await handsRef.current.send({ image: videoElementRef.current });
+            } else {
+                if (isTrackingRef.current) {
+                    animationFrameIdRef.current = requestAnimationFrame(sendFrame);
+                    return;
+                }
             }
         } catch (e: unknown) {
             const errorMessage = e instanceof Error ? e.message : String(e) || 'Failed to send frame to MediaPipe Hands';
+            console.error('sendFrame: Error during hands.send():', errorMessage);
             setError(errorMessage);
             errorListenersRef.current.forEach(listener => listener(errorMessage));
             if (onError) onError(errorMessage);
-            // Optionally stop tracking on error, or let user decide
         }
-        if (isTracking) { // Check isTracking again, as it might have been stopped
+
+        if (isTrackingRef.current) {
             animationFrameIdRef.current = requestAnimationFrame(sendFrame);
         }
-    }, [isTracking, onError]);
+    }, [onError]);
 
     const startTracking = useCallback(async (videoElement: HTMLVideoElement) => {
         if (!handsRef.current) {
