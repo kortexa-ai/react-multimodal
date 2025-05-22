@@ -6,6 +6,8 @@ import { useMicrophoneControl } from '../microphone/hooks/useMicrophoneControl';
 import { CameraProvider } from '../camera/CameraProvider';
 import { useCameraControl } from '../camera/hooks/useCameraControl';
 
+import { HandsProvider, useHands } from '../hands/HandsProvider';
+
 import { MediaContext } from './mediaContext';
 import type { MediaProviderProps, MediaContextType } from './mediaTypes';
 
@@ -22,6 +24,7 @@ function InternalMediaOrchestrator({
 }: InternalMediaOrchestratorProps) {
     const mic = useMicrophoneControl();
     const cam = useCameraControl();
+    const hands = useHands();
 
     const [mediaOrchestrationError, setMediaOrchestrationError] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(false);
@@ -147,12 +150,13 @@ function InternalMediaOrchestrator({
         toggleMedia,
         cam,
         mic,
+        hands,
     }), [
         isAudioActive, isVideoActive, isMediaActive,
         audioStream, videoStream, videoFacingMode,
         currentAudioError, currentVideoError, mediaOrchestrationError,
         startMedia, stopMedia, toggleMedia,
-        cam, mic
+        cam, mic, hands
     ]);
 
     return (
@@ -166,14 +170,17 @@ export function MediaProvider({
     children,
     microphoneProps,
     cameraProps,
+    handsProps,
     startBehavior = DEFAULT_START_BEHAVIOR,
 }: MediaProviderProps) {
     return (
         <MicrophoneProvider {...microphoneProps}>
             <CameraProvider {...cameraProps}>
-                <InternalMediaOrchestrator startBehavior={startBehavior}>
-                    {children}
-                </InternalMediaOrchestrator>
+                <HandsProvider {...handsProps}>
+                    <InternalMediaOrchestrator startBehavior={startBehavior}>
+                        {children}
+                    </InternalMediaOrchestrator>
+                </HandsProvider>
             </CameraProvider>
         </MicrophoneProvider>
     );

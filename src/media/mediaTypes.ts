@@ -7,6 +7,7 @@ import type {
     MicrophoneContextType as ActualMicrophoneControlType,
 } from "../microphone/types";
 import type { UseCameraProps } from "../camera/useCamera";
+import type { HandsContextType as ActualHandsControlType, UseHandsProps } from "../hands/types";
 
 export interface MediaState {
     isAudioActive: boolean;
@@ -30,11 +31,13 @@ export interface MediaControls {
 export interface MediaContextType extends MediaState, MediaControls {
     cam: ActualCameraControlType | null;
     mic: ActualMicrophoneControlType | null;
+    hands?: ActualHandsControlType | null;
 }
 
 export interface MediaProviderProps {
     children?: React.ReactNode;
     microphoneProps?: UseMicrophoneProps;
     cameraProps?: UseCameraProps;
+    handsProps?: UseHandsProps;
     startBehavior?: "proceed" | "halt";
 }
