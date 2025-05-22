@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const MicrophoneView = ({ mic }) => {
+function MicrophoneView({ mic }) {
     const mountRef = useRef(null);
     const animationIdRef = useRef(null);
     const sceneRef = useRef(null);

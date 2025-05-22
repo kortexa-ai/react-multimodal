@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
-import { useCameraControl } from "../../../index";
-import StatusDot from '../../common/StatusDot';
 import { Camera, CameraOff } from "lucide-react";
+import { useCameraControl } from "../../../index";
 import CameraView from "../../common/CameraView";
+import StatusDot from "../../common/StatusDot";
 
-const ProviderDemo = () => {
+function ProviderDemo() {
     const cam = useCameraControl();
 
     const [isCameraOn, setIsCameraOn] = useState(cam.isOn);
