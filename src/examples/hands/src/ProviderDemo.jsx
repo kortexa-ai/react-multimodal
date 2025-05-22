@@ -72,7 +72,6 @@ function ProviderDemo() {
         if (!hands) return;
 
         const handleData = (data) => {
-            console.log(`Hands data at ${new Date().toLocaleTimeString()}:`, data);
             setDetectedHandData(data);
             setIsHandTracking(true);
             setHandsErrorMessage("");
@@ -146,10 +145,6 @@ function ProviderDemo() {
                 );
                 return;
             }
-            console.log(
-                "Attempting to start hand tracking with:",
-                videoElementForHands
-            );
             try {
                 hands.startTracking(videoElementForHands);
                 // If startTracking itself doesn't set isHandTracking,
