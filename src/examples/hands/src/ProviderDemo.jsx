@@ -170,6 +170,7 @@ function ProviderDemo() {
                 <CameraView
                     stream={currentStream}
                     onVideoElementReady={setVideoElementForHands}
+                    handsData={detectedHandData}
                 />
             </div>
             {cameraErrorMessage && (
@@ -206,12 +207,6 @@ function ProviderDemo() {
                 </button>
                 <StatusDot isActive={isHandTracking} />
             </div>
-            {detectedHandData && (
-                <div style={{ marginTop: "10px", textAlign: "left" }}>
-                    <h4>Detected Hands Data:</h4>
-                    <pre>{JSON.stringify(detectedHandData, null, 2)}</pre>
-                </div>
-            )}
         </div>
     );
 }

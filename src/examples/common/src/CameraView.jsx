@@ -1,7 +1,50 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-function CameraView({ stream, onVideoElementReady }) {
+// Standard MediaPipe Hand Connections
+const HAND_CONNECTIONS = [
+    // Thumb
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    // Index Finger
+    [0, 5], [5, 6], [6, 7], [7, 8],
+    // Middle Finger
+    [0, 9], [9, 10], [10, 11], [11, 12],
+    // Ring Finger
+    [0, 13], [13, 14], [14, 15], [15, 16],
+    // Pinky Finger
+    [0, 17], [17, 18], [18, 19], [19, 20],
+    // Palm
+    [5, 9], [9, 13], [13, 17], [17, 5]
+];
+
+// Colors for connections, corresponding to HAND_CONNECTIONS order
+const CONNECTION_COLORS = [
+    // Thumb (4 connections)
+    'red', 'red', 'red', 'red',
+    // Index Finger (4 connections)
+    'lime', 'lime', 'lime', 'lime',
+    // Middle Finger (4 connections)
+    'blue', 'blue', 'blue', 'blue',
+    // Ring Finger (4 connections)
+    'yellow', 'yellow', 'yellow', 'yellow',
+    // Pinky Finger (4 connections)
+    'fuchsia', 'fuchsia', 'fuchsia', 'fuchsia',
+    // Palm (4 connections)
+    'white', 'white', 'white', 'white'
+];
+
+const LANDMARK_COLOR = 'aqua'; // Default color for non-fingertip landmarks
+const FINGERTIP_COLORS = {
+    4: 'red',       // Thumb tip
+    8: 'lime',      // Index finger tip
+    12: 'blue',     // Middle finger tip
+    16: 'yellow',   // Ring finger tip
+    20: 'fuchsia'   // Pinky tip
+};
+const LANDMARK_RADIUS = 5;
+const LINE_WIDTH = 3;
+
+function CameraView({ stream, onVideoElementReady, handsData }) {
     const mountRef = useRef(null);
     const videoElementRef = useRef(null);
     const rendererRef = useRef(null); // To store renderer instance for cleanup
@@ -11,6 +54,11 @@ function CameraView({ stream, onVideoElementReady }) {
     const videoPlaneRef = useRef(null);
     const animationFrameIdRef = useRef(null);
     const videoMetadataListenerRef = useRef(null);
+
+    // For overlay canvas
+    const overlayCanvasRef = useRef(null);
+    const [overlayWidth, setOverlayWidth] = useState(0);
+    const [overlayHeight, setOverlayHeight] = useState(0);
 
     useEffect(() => {
         const currentMount = mountRef.current;
@@ -341,9 +389,103 @@ function CameraView({ stream, onVideoElementReady }) {
         };
     }, [stream, onVideoElementReady]); // Effect dependencies
 
+    // Effect for ResizeObserver to update overlay canvas dimensions
+    useEffect(() => {
+        const currentMount = mountRef.current;
+        if (!currentMount) return;
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                setOverlayWidth(entry.contentRect.width);
+                setOverlayHeight(entry.contentRect.height);
+            }
+        });
+
+        resizeObserver.observe(currentMount);
+        // Set initial dimensions
+        setOverlayWidth(currentMount.clientWidth);
+        setOverlayHeight(currentMount.clientHeight);
+
+        return () => {
+            resizeObserver.unobserve(currentMount);
+        };
+    }, []); // Runs once on mount
+
+    // Effect for drawing hand landmarks
+    useEffect(() => {
+        const canvas = overlayCanvasRef.current;
+        if (!canvas) return;
+
+        // Set canvas physical dimensions for drawing
+        canvas.width = overlayWidth;
+        canvas.height = overlayHeight;
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, overlayWidth, overlayHeight); // Clear previous drawings
+
+        if (!handsData || !handsData.detectedHands || overlayWidth === 0 || overlayHeight === 0) {
+            return; // No data or canvas not ready
+        }
+
+        handsData.detectedHands.forEach(hand => {
+            if (hand.landmarks) {
+                // Draw connections first
+                HAND_CONNECTIONS.forEach((connection, index) => {
+                    const [startIdx, endIdx] = connection;
+                    const startLandmark = hand.landmarks[startIdx];
+                    const endLandmark = hand.landmarks[endIdx];
+
+                    if (startLandmark && endLandmark) {
+                        const startX = startLandmark.x * overlayWidth;
+                        const startY = startLandmark.y * overlayHeight;
+                        const endX = endLandmark.x * overlayWidth;
+                        const endY = endLandmark.y * overlayHeight;
+
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(endX, endY);
+                        ctx.strokeStyle = CONNECTION_COLORS[index] || 'white'; // Default to white if color not found
+                        ctx.lineWidth = LINE_WIDTH;
+                        ctx.stroke();
+                    }
+                });
+
+                // Draw landmarks on top of connections
+                hand.landmarks.forEach((landmark, index) => {
+                    const x = landmark.x * overlayWidth;
+                    const y = landmark.y * overlayHeight;
+                    const color = FINGERTIP_COLORS[index] || LANDMARK_COLOR;
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, LANDMARK_RADIUS, 0, 2 * Math.PI);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                });
+            }
+        });
+
+    }, [handsData, overlayWidth, overlayHeight]);
+
     // The div that Three.js will render into.
     // Its class for styling (e.g., camera-view-container) should be applied by the parent component.
-    return <div ref={mountRef} style={{ width: "100%", height: "100%" }}></div>;
+    return (
+        <div style={{ position: 'relative', width: "100%", height: "100%" }}>
+            <div ref={mountRef} style={{ width: "100%", height: "100%" }}></div>
+            <canvas
+                ref={overlayCanvasRef}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    // width and height are controlled by canvas.width/height attributes for drawing surface size
+                    // CSS width/height 100% ensures it stretches to the parent's dimensions for layout
+                    width: '100%', 
+                    height: '100%',
+                    pointerEvents: 'none', // Allow interactions with elements below
+                }}
+            />
+        </div>
+    );
 }
 
 export default CameraView;
