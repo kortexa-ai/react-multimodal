@@ -51,50 +51,65 @@ function InternalMediaOrchestrator({
 
         setIsStarting(true);
         setMediaOrchestrationError(null);
-        setCurrentAudioError(null);
-        setCurrentVideoError(null);
+        // Keep currentAudioError and currentVideoError for persistent listener-based errors
+        // but we'll rely on direct try-catch for startMedia's immediate error reporting.
 
-        let micOk = isAudioActive;
-        let camOk = isVideoActive;
+        let micAttemptOk = isAudioActive;
+        let camAttemptOk = isVideoActive;
+        let micStartError: string | null = null;
+        let camStartError: string | null = null;
 
         if (!isAudioActive) {
-            await mic.start();
-            micOk = mic.isRecording() && !currentAudioError;
+            try {
+                await mic.start();
+                micAttemptOk = true; // If no error, attempt was successful
+            } catch (err) {
+                micAttemptOk = false;
+                micStartError = err instanceof Error ? err.message : String(err);
+            }
         }
 
         if (!isVideoActive) {
-            await cam.startCamera();
-            camOk = cam.isOn && !currentVideoError;
+            try {
+                await cam.startCamera();
+                camAttemptOk = true; // If no error, attempt was successful
+            } catch (err) {
+                camAttemptOk = false;
+                camStartError = err instanceof Error ? err.message : String(err);
+            }
         }
 
+        // After attempts, check actual state for halt behavior if needed, 
+        // but use attemptOk for error messaging.
+        const finalMicOk = mic.isRecording();
+        const finalCamOk = cam.isOn;
+
         if (startBehavior === 'halt') {
-            if (!micOk || !camOk) {
-                const micErrMsg = currentAudioError || (micOk ? '' : 'Failed to start');
-                const camErrMsg = currentVideoError || (camOk ? '' : 'Failed to start');
+            if (!micAttemptOk || !camAttemptOk) {
+                // If halt and any attempt failed, stop everything that might have started.
+                const micErrMsg = micStartError || (micAttemptOk ? '' : 'Failed to start');
+                const camErrMsg = camStartError || (camAttemptOk ? '' : 'Failed to start');
                 setMediaOrchestrationError(
-                    `Media start halted: Mic ${micOk ? 'OK' : `FAIL (${micErrMsg})`}. Cam ${camOk ? 'OK' : `FAIL (${camErrMsg})`}.`
+                    `Media start halted: Mic ${micAttemptOk ? 'OK' : `FAIL (${micErrMsg})`}. Cam ${camAttemptOk ? 'OK' : `FAIL (${camErrMsg})`}.`
                 );
-                if (mic.isRecording()) mic.stop();
-                if (cam.isOn) cam.stopCamera();
+                if (mic.isRecording()) mic.stop(); // Stop if it managed to start despite error or before halt
+                if (cam.isOn) cam.stopCamera(); // Stop if it managed to start despite error or before halt
                 setIsStarting(false);
                 return;
             }
-        } else {
-            if (!micOk && !camOk) {
-                setMediaOrchestrationError(`Both microphone and camera failed to start. Mic: ${currentAudioError || 'Unknown'}. Cam: ${currentVideoError || 'Unknown'}`);
-            } else if (!micOk && isVideoActive) {
-                setMediaOrchestrationError(`Microphone failed to start: ${currentAudioError || 'Unknown'}. Camera proceeded.`);
-            } else if (!camOk && isAudioActive) {
-                setMediaOrchestrationError(`Camera failed to start: ${currentVideoError || 'Unknown'}. Microphone proceeded.`);
-            } else if (!micOk && !isVideoActive && camOk) {
-                 setMediaOrchestrationError(`Microphone failed to start: ${currentAudioError || 'Unknown'}. Camera started.`);
-            } else if (!camOk && !isAudioActive && micOk) {
-                 setMediaOrchestrationError(`Camera failed to start: ${currentVideoError || 'Unknown'}. Microphone started.`);
+        } else { // 'proceed' behavior
+            if (!micAttemptOk && !camAttemptOk) {
+                setMediaOrchestrationError(`Both microphone and camera failed to start. Mic: ${micStartError || 'Unknown'}. Cam: ${camStartError || 'Unknown'}`);
+            } else if (!micAttemptOk) {
+                setMediaOrchestrationError(`Microphone failed to start: ${micStartError || 'Unknown'}. Camera ${finalCamOk ? 'proceeded' : 'status unknown'}.`);
+            } else if (!camAttemptOk) {
+                setMediaOrchestrationError(`Camera failed to start: ${camStartError || 'Unknown'}. Microphone ${finalMicOk ? 'proceeded' : 'status unknown'}.`);
             }
+            // If both micAttemptOk and camAttemptOk are true, no error message is set.
         }
 
         setIsStarting(false);
-    }, [isStarting, isAudioActive, isVideoActive, mic, cam, startBehavior, currentAudioError, currentVideoError]);
+    }, [isStarting, isAudioActive, isVideoActive, mic, cam, startBehavior]);
 
     const stopMedia = useCallback(() => {
         if (mic.isRecording()) {
@@ -130,11 +145,14 @@ function InternalMediaOrchestrator({
         startMedia,
         stopMedia,
         toggleMedia,
+        cam,
+        mic,
     }), [
         isAudioActive, isVideoActive, isMediaActive,
         audioStream, videoStream, videoFacingMode,
         currentAudioError, currentVideoError, mediaOrchestrationError,
-        startMedia, stopMedia, toggleMedia
+        startMedia, stopMedia, toggleMedia,
+        cam, mic
     ]);
 
     return (

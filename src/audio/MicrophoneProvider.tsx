@@ -22,8 +22,14 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
                 await microphoneDispatcher.dispatch('start');
             }
         } catch (err) {
-            const errorMessage = 'Failed to start microphone' + err;
-            microphoneDispatcher.dispatch('error', errorMessage);
+            let errorMessageText = 'Failed to start microphone';
+            if (err instanceof Error) {
+                errorMessageText += ': ' + err.message;
+            } else {
+                errorMessageText += ': ' + String(err);
+            }
+            microphoneDispatcher.dispatch('error', errorMessageText);
+            throw err; // Re-throw the error
         }
     }, [micIsRecording, micStart]);
 

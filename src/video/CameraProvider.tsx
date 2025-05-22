@@ -44,9 +44,14 @@ export function CameraProvider({ children, ...useCameraProps }: CameraProviderPr
             await camStart();
             cameraDispatcher.dispatch('started');
         } catch (err) {
-            const errorMessage = `Failed to start camera: ${(err as Error).message}`;
-            cameraDispatcher.dispatch('error', errorMessage);
-            // Re-throw or handle as per application needs, for now, it's dispatched
+            let errorMessageText = 'Failed to start camera';
+            if (err instanceof Error) {
+                errorMessageText += ': ' + err.message;
+            } else {
+                errorMessageText += ': ' + String(err);
+            }
+            cameraDispatcher.dispatch('error', errorMessageText);
+            throw err; // Re-throw the error
         }
     }, [camStart]);
 

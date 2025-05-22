@@ -1,5 +1,5 @@
-import type { FacingMode } from '../video/types';
-import type { UseMicrophoneProps } from '../audio/types';
+import type { FacingMode, CameraContextType as ActualCameraControlType } from '../video/types';
+import type { UseMicrophoneProps, MicrophoneContextType as ActualMicrophoneControlType } from '../audio/types';
 import type { UseCameraProps } from '../video/useCamera';
 
 export interface MediaState {
@@ -18,9 +18,13 @@ export interface MediaControls {
     startMedia: () => Promise<void>;
     stopMedia: () => void;
     toggleMedia: () => Promise<void>;
+    // Individual controls might be better handled directly on cam/mic objects
 }
 
-export interface MediaContextType extends MediaState, MediaControls {}
+export interface MediaContextType extends MediaState, MediaControls {
+    cam: ActualCameraControlType | null; 
+    mic: ActualMicrophoneControlType | null; 
+}
 
 export interface MediaProviderProps {
     children?: React.ReactNode;
