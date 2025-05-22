@@ -93,7 +93,7 @@ const ProviderDemo = () => {
                 <p className="error-message">{cameraErrorMessage}</p>
             )}
 
-            <MicrophoneView mic={media.audioStream} />
+            <MicrophoneView mic={media.mic} />
             {micErrorMessage && (
                 <p className="error-message">{micErrorMessage}</p>
             )}
