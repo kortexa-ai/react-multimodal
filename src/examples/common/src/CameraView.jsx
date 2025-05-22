@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-function CameraView({ stream }) {
+function CameraView({ stream, onVideoElementReady }) {
     const mountRef = useRef(null);
     const videoElementRef = useRef(null);
     const rendererRef = useRef(null); // To store renderer instance for cleanup
@@ -22,6 +22,9 @@ function CameraView({ stream }) {
             videoElementRef.current.playsInline = true;
             videoElementRef.current.muted = true;
             videoElementRef.current.autoplay = true; // Autoplay once stream is set
+            if (typeof onVideoElementReady === 'function') {
+                onVideoElementReady(videoElementRef.current);
+            }
         }
         const videoElement = videoElementRef.current;
 
@@ -33,6 +36,9 @@ function CameraView({ stream }) {
             currentMount.innerHTML = ""; // Clear previous canvas
 
             videoElement.srcObject = currentStream;
+            if (currentStream && typeof onVideoElementReady === 'function') {
+                onVideoElementReady(videoElementRef.current);
+            }
 
             const width = currentMount.clientWidth;
             const height = currentMount.clientHeight;
@@ -151,6 +157,9 @@ function CameraView({ stream }) {
             } else {
                 // If already initialized, just update srcObject
                 videoElement.srcObject = stream;
+                if (stream && typeof onVideoElementReady === 'function') {
+                    onVideoElementReady(videoElementRef.current);
+                }
                 // Metadata listener should still be active or re-added if necessary
                 // Consider if onVideoMetadataLoaded needs to be called again or if texture updates suffice
                 if (videoMetadataListenerRef.current) {
@@ -209,6 +218,9 @@ function CameraView({ stream }) {
                 const tracks = videoElement.srcObject.getTracks();
                 tracks.forEach((track) => track.stop());
                 videoElement.srcObject = null;
+                if (typeof onVideoElementReady === 'function') {
+                    onVideoElementReady(null);
+                }
             }
             if (
                 rendererRef.current &&
@@ -229,7 +241,9 @@ function CameraView({ stream }) {
             cameraRef.current = null; // Clear refs
             videoPlaneRef.current = null;
             videoTextureRef.current = null;
-            mountRef.current.innerHTML = ""; // Clear mount point
+            if (mountRef.current) { // Ensure mountRef.current exists before clearing
+                mountRef.current.innerHTML = ""; // Clear mount point
+            }
         }
 
         const handleResize = () => {
@@ -325,7 +339,7 @@ function CameraView({ stream }) {
             }
             // videoElement is persisted via ref, not removed from DOM here unless mountRef.current is cleared
         };
-    }, [stream]); // Effect dependencies
+    }, [stream, onVideoElementReady]); // Effect dependencies
 
     // The div that Three.js will render into.
     // Its class for styling (e.g., camera-view-container) should be applied by the parent component.

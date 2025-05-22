@@ -1,18 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
 import { useCameraControl } from "../../../index";
+import { useHandsControl } from "../../../hands/hooks/useHandsControl";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
     const cam = useCameraControl();
+    const hands = useHandsControl();
 
     const [isCameraOn, setIsCameraOn] = useState(cam?.isOn || false);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
     const [currentStream, setCurrentStream] = useState(null);
+    const [videoElementForHands, setVideoElementForHands] = useState(null);
 
     const [isHandTracking, setIsHandTracking] = useState(false);
     const [handsErrorMessage, setHandsErrorMessage] = useState("");
+    const [detectedHandData, setDetectedHandData] = useState(null);
 
     useEffect(() => {
         const handleStreamChange = (stream) => {
@@ -65,46 +69,114 @@ function ProviderDemo() {
         };
     }, [cam]);
 
+    useEffect(() => {
+        if (!hands) return;
+
+        const handleData = (data) => {
+            console.log("Hands data received in demo:", data);
+            setDetectedHandData(data);
+            setIsHandTracking(true);
+            setHandsErrorMessage("");
+        };
+
+        const handleError = (error) => {
+            console.error("Hands error in demo:", error);
+            setHandsErrorMessage(error.message || "Hand tracking error");
+            setIsHandTracking(false);
+        };
+
+        const dataId = hands.addHandsDataListener(handleData);
+        const errorId = hands.addErrorListener(handleError);
+
+        return () => {
+            hands.removeHandsDataListener(dataId);
+            hands.removeErrorListener(errorId);
+        };
+    }, [hands]);
+
     const handleToggleCamera = useCallback(async () => {
         if (!cam) return;
         setCameraErrorMessage("");
         try {
             if (cam.isOn) {
-                await cam.stopCamera();
+                if (isHandTracking && hands) {
+                    hands.stopTracking();
+                    setIsHandTracking(false);
+                    setDetectedHandData(null);
+                }
+                cam.stopCamera();
             } else {
-                await cam.startCamera();
+                cam.startCamera();
             }
         } catch (error) {
             console.error("Failed to toggle camera:", error);
             setCameraErrorMessage(error.message || "Failed to toggle camera");
         }
-    }, [cam]);
+    }, [cam, hands, isHandTracking]);
 
     const handleToggleHandTracking = useCallback(async () => {
         setHandsErrorMessage("");
+        if (!hands) {
+            setHandsErrorMessage("Hands provider not available.");
+            return;
+        }
+
         if (isHandTracking) {
-            console.log("Stopping hand tracking (placeholder)");
+            hands.stopTracking();
             setIsHandTracking(false);
+            setDetectedHandData(null);
         } else {
-            if (!isCameraOn || !cam?.videoRef?.current) {
+            if (!isCameraOn) {
                 setHandsErrorMessage(
                     "Camera must be on to start hand tracking."
                 );
                 return;
             }
+            if (!videoElementForHands) {
+                setHandsErrorMessage(
+                    "Video element not yet available for hand tracking."
+                );
+                return;
+            }
+            if (
+                !videoElementForHands.srcObject ||
+                !videoElementForHands.srcObject.active
+            ) {
+                setHandsErrorMessage(
+                    "Video element does not have an active stream."
+                );
+                return;
+            }
             console.log(
-                "Starting hand tracking (placeholder) with video element:",
-                cam.videoRef.current
+                "Attempting to start hand tracking with:",
+                videoElementForHands
             );
-            setIsHandTracking(true);
+            try {
+                hands.startTracking(videoElementForHands);
+                // If startTracking itself doesn't set isHandTracking,
+                // we might optimistically set it here,
+                // but let's wait for data/error events first as per current design.
+            } catch (error) {
+                console.error(
+                    "Error directly from hands.startTracking call:",
+                    error
+                );
+                setHandsErrorMessage(
+                    error.message || "Failed to start hand tracking."
+                );
+                setIsHandTracking(false); // Ensure it's false if start failed
+            }
         }
-    }, [isCameraOn, isHandTracking, cam?.videoRef]);
+    }, [isCameraOn, videoElementForHands, hands, isHandTracking]);
 
     return (
         <div className="card-container">
             <h2 className="card-title">Hands Provider Demo</h2>
             <div className="camera-view-container">
-                <CameraView stream={currentStream} />
+                <CameraView
+                    stream={currentStream}
+                    onVideoElementReady={setVideoElementForHands}
+                />
             </div>
             {cameraErrorMessage && (
                 <p className="error-message">
@@ -140,6 +212,12 @@ function ProviderDemo() {
                 </button>
                 <StatusDot isActive={isHandTracking} />
             </div>
+            {detectedHandData && (
+                <div style={{ marginTop: "10px", textAlign: "left" }}>
+                    <h4>Detected Hands Data:</h4>
+                    <pre>{JSON.stringify(detectedHandData, null, 2)}</pre>
+                </div>
+            )}
         </div>
     );
 }
