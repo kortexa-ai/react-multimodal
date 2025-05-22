@@ -1,22 +1,43 @@
 import { useEffect, useState, useCallback } from "react";
-import { Hand, Video, VideoOff } from "lucide-react";
-import { CameraProvider, useCamera } from "../../../index";
+import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
+import { useCameraControl } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
-    const cam = useCamera();
+    const cam = useCameraControl();
 
     const [isCameraOn, setIsCameraOn] = useState(cam?.isOn || false);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
+    const [currentStream, setCurrentStream] = useState(null);
 
     const [isHandTracking, setIsHandTracking] = useState(false);
     const [handsErrorMessage, setHandsErrorMessage] = useState("");
 
     useEffect(() => {
+        const handleStreamChange = (stream) => {
+            setCurrentStream(stream);
+            if (stream) {
+                setIsCameraOn(true);
+            } else {
+                setIsCameraOn(false);
+            }
+        };
+
+        const streamListenerId =
+            cam.addStreamChangedListener(handleStreamChange);
+        if (cam.stream) {
+            handleStreamChange(cam.stream);
+        }
+
+        return () => {
+            cam.removeStreamChangedListener(streamListenerId);
+        };
+    }, [cam]);
+
+    useEffect(() => {
         if (!cam) return;
 
-        const updateCameraStatus = () => setIsCameraOn(cam.isOn);
         const handleCamError = (error) => {
             console.error("Camera Error in Hands Demo:", error);
             setCameraErrorMessage(
@@ -26,24 +47,21 @@ function ProviderDemo() {
             );
         };
         const handleCamStarted = () => {
-            console.log("Camera started in Hands Demo");
             setIsCameraOn(true);
             setCameraErrorMessage("");
         };
         const handleCamStopped = () => {
-            console.log("Camera stopped in Hands Demo");
             setIsCameraOn(false);
         };
 
-        updateCameraStatus();
         const errorListenerId = cam.addErrorListener(handleCamError);
-        const startListenerId = cam.addStartListener(handleCamStarted);
-        const stopListenerId = cam.addStopListener(handleCamStopped);
+        const startListenerId = cam.addStartedListener(handleCamStarted);
+        const stopListenerId = cam.addStoppedListener(handleCamStopped);
 
         return () => {
             cam.removeErrorListener(errorListenerId);
-            cam.removeStartListener(startListenerId);
-            cam.removeStopListener(stopListenerId);
+            cam.removeStartedListener(startListenerId);
+            cam.removeStoppedListener(stopListenerId);
         };
     }, [cam]);
 
@@ -52,9 +70,9 @@ function ProviderDemo() {
         setCameraErrorMessage("");
         try {
             if (cam.isOn) {
-                await cam.stop();
+                await cam.stopCamera();
             } else {
-                await cam.start();
+                await cam.startCamera();
             }
         } catch (error) {
             console.error("Failed to toggle camera:", error);
@@ -83,21 +101,11 @@ function ProviderDemo() {
     }, [isCameraOn, isHandTracking, cam?.videoRef]);
 
     return (
-        <div className="provider-demo-container">
-            <div className="status-section">
-                <div className="status-item">
-                    <span>Camera:</span>
-                    <StatusDot isOn={isCameraOn} />
-                    <span>{isCameraOn ? "ON" : "OFF"}</span>
-                </div>
-                <div className="status-item">
-                    <span>Hand Tracking:</span>
-                    <StatusDot isOn={isHandTracking} />
-                    <span>{isHandTracking ? "ACTIVE" : "INACTIVE"}</span>
-                </div>
+        <div className="card-container">
+            <h2 className="card-title">Hands Provider Demo</h2>
+            <div className="camera-view-container">
+                <CameraView stream={currentStream} />
             </div>
-
-            <CameraView cam={cam} />
             {cameraErrorMessage && (
                 <p className="error-message">
                     Camera Error: {cameraErrorMessage}
@@ -108,45 +116,32 @@ function ProviderDemo() {
                     Hands Error: {handsErrorMessage}
                 </p>
             )}
-
             <div className="button-row">
                 <button
                     onClick={handleToggleCamera}
-                    disabled={!cam}
-                    className={`control-button ${
-                        isCameraOn ? "button-on" : ""
-                    }`}
+                    title={isCameraOn ? "Stop Camera" : "Start Camera"}
                 >
-                    {isCameraOn ? <VideoOff size={20} /> : <Video size={20} />}
-                    {isCameraOn ? "Stop Camera" : "Start Camera"}
+                    {isCameraOn ? <VideoOff /> : <Video />}
                 </button>
+                <StatusDot isActive={isCameraOn} />
+
+                <span className="control-separator"></span>
+
                 <button
                     onClick={handleToggleHandTracking}
                     disabled={!isCameraOn}
-                    className={`control-button ${
-                        isHandTracking ? "button-on" : ""
-                    }`}
+                    title={
+                        isHandTracking
+                            ? "Stop Hand Tracking"
+                            : "Start Hand Tracking"
+                    }
                 >
-                    <Hand size={20} />
-                    {isHandTracking
-                        ? "Stop Hand Tracking"
-                        : "Start Hand Tracking"}
+                    {isHandTracking ? <HandMetal /> : <Hand />}
                 </button>
+                <StatusDot isActive={isHandTracking} />
             </div>
         </div>
     );
 }
 
-const HandsDemoContainer = () => {
-    return (
-        <CameraProvider
-            options={{
-                video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            }}
-        >
-            <ProviderDemo />
-        </CameraProvider>
-    );
-};
-
-export default HandsDemoContainer;
+export default ProviderDemo;
