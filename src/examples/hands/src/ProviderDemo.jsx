@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
-import { useCameraControl } from "../../../index";
-import { useHandsControl } from "../../../hands/hooks/useHandsControl";
+import { useCameraControl, useHandsControl } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
