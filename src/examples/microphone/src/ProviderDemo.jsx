@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Mic, MicOff } from "lucide-react";
 import { useMicrophoneControl } from "../../../index";
-import MicrophoneView from "../../common/MicrophoneView";
-import StatusDot from "../../common/StatusDot";
+import MicrophoneView from "../../common/src/MicrophoneView";
+import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
     const mic = useMicrophoneControl();

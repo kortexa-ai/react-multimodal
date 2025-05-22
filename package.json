@@ -61,9 +61,11 @@
         "react-dom": "^18.0.0 || ^19.0.0"
     },
     "dependencies": {
+        "@mediapipe/hands": "^0.4.1675469240",
         "@mediapipe/tasks-audio": "^0.10.22-rc.20250304",
         "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "uuid": "^11.1.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.27.0",
@@ -72,6 +74,7 @@
         "@types/react": "^19.1.4",
         "@types/react-dom": "^19.1.5",
         "@types/semver": "^7.7.0",
+        "@types/uuid": "^10.0.0",
         "@vitejs/plugin-react-swc": "^3.9.0",
         "eslint": "^9.27.0",
         "eslint-import-resolver-typescript": "^4.3.5",

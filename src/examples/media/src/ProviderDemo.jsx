@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Camera, CameraOff, Mic, MicOff, Play, Square } from "lucide-react";
 import { useMediaControl } from "../../../index";
-import MicrophoneView from "../../common/MicrophoneView";
-import CameraView from "../../common/CameraView";
-import StatusDot from "../../common/StatusDot";
+import MicrophoneView from "../../common/src/MicrophoneView";
+import CameraView from "../../common/src/CameraView";
+import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");

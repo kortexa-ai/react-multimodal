@@ -31,3 +31,19 @@ export type {
     FacingMode,
 } from "./camera/types";
 export type { UseCameraProps } from "./camera/useCamera";
+
+// Hands - Provider, Hook & Core Types
+export { HandsProvider } from "./hands/HandsProvider";
+export type { HandsProviderProps } from "./hands/HandsProvider";
+export { useHandsControl } from "./hands/hooks/useHandsControl";
+export { useHands } from "./hands/HandsProvider"; // Consumer hook
+export type {
+    UseHandsProps,
+    HandsContextType,
+    HandsData,
+    DetectedHand,
+    HandLandmark,
+    Handedness,
+    MediaPipeHandsOptions,
+    MediaPipeHandsResults
+} from "./hands/types";
