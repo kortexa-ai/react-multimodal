@@ -1,145 +1,132 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { useMicrophoneControl } from '../../../index.ts';
+import { useEffect, useRef, useState, useCallback } from "react";
+import * as THREE from "three";
+import { useMicrophoneControl } from "../../../index";
+import StatusDot from '../../common/StatusDot';
 
-const ProviderDemo = () => {
-    const mountRef = useRef(null);
-    const sceneRef = useRef(null);
-    const cameraRef = useRef(null);
-    const rendererRef = useRef(null);
-    const barRef = useRef(null);
-    const animationFrameIdRef = useRef(null);
-    const latestAmplitudeRef = useRef(0); // Ref to hold the latest amplitude for the animation loop
-
-    const [statusMessage, setStatusMessage] = useState("Idle");
-    const [errorMessage, setErrorMessage] = useState("");
-    const [latestAmplitude, setLatestAmplitude] = useState(0);
-
+function ProviderDemo() {
     const mic = useMicrophoneControl();
+    const mountRef = useRef(null);
+    const animationIdRef = useRef(null);
+    const [errorMessage, setErrorMessage] = useState("");
 
-    // Three.js setup effect - should run only once on mount
     useEffect(() => {
-        if (!mountRef.current) return;
+        if (!mountRef.current || !mic) return;
 
-        // Ensure the mount point is empty before appending a new canvas (for StrictMode)
-        mountRef.current.innerHTML = '';
+        const currentMount = mountRef.current;
+        currentMount.innerHTML = ""; // Clear previous renderer
 
-        // Scene
-        sceneRef.current = new THREE.Scene();
-        sceneRef.current.background = new THREE.Color(0x222222);
+        let scene, camera, renderer, bar;
 
-        // Camera
-        cameraRef.current = new THREE.PerspectiveCamera(
-            75,
-            mountRef.current.clientWidth / mountRef.current.clientHeight,
-            0.1,
-            1000
-        );
-        cameraRef.current.position.z = 5;
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
 
-        // Renderer
-        rendererRef.current = new THREE.WebGLRenderer({ antialias: true });
-        rendererRef.current.setSize(
-            mountRef.current.clientWidth,
-            mountRef.current.clientHeight
-        );
-        mountRef.current.appendChild(rendererRef.current.domElement);
+        const width = currentMount.clientWidth;
+        const height = currentMount.clientHeight;
 
-        // Amplitude Bar
-        const geometry = new THREE.BoxGeometry(1, 1, 1); // Initial height 1
+        camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+        camera.position.z = 5;
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setClearColor(0x000000, 0); // Transparent background
+        currentMount.appendChild(renderer.domElement);
+
+        const geometry = new THREE.BoxGeometry(1, 0.1, 1); // Initial small height
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        barRef.current = new THREE.Mesh(geometry, material);
-        barRef.current.position.y = -0.5; // Anchor at bottom
-        sceneRef.current.add(barRef.current);
+        bar = new THREE.Mesh(geometry, material);
+        bar.position.y = -0.5; // Anchor at bottom
+        scene.add(bar);
 
-        // Animation loop
         const animate = () => {
-            animationFrameIdRef.current = requestAnimationFrame(animate);
-            if (barRef.current) {
-                // Scale the bar based on the latest amplitude from the ref
-                const targetScale = Math.max(0.01, latestAmplitudeRef.current * 10); // Use ref here
-                barRef.current.scale.y = THREE.MathUtils.lerp(
-                    barRef.current.scale.y,
-                    targetScale,
-                    0.1
-                );
-                barRef.current.position.y = barRef.current.scale.y / 2 - 0.5; // Keep bottom anchored
+            animationIdRef.current = requestAnimationFrame(animate);
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
             }
-            rendererRef.current.render(sceneRef.current, cameraRef.current);
         };
         animate();
 
-        // Handle resize
+        const handleAudioData = (data) => {
+            if (bar && data && data.length > 0) {
+                let sumSquares = 0.0;
+                for (const amplitude of data) {
+                    sumSquares += amplitude * amplitude;
+                }
+                const rms = Math.sqrt(sumSquares / data.length);
+                const maxHeight = 5; // Max height of the bar
+                const newHeight = Math.min(
+                    Math.max(0.1, rms * maxHeight * 10),
+                    maxHeight
+                ); // Scale and clamp height
+
+                bar.scale.y = newHeight / 0.1; // Scale based on initial geometry height of 0.1
+                bar.position.y = newHeight / 2 - 0.1 / 2; // Adjust position based on new height
+            }
+        };
+
+        const handleMicError = (error) => {
+            console.error("Microphone Error:", error);
+            setErrorMessage(
+                typeof error === "string"
+                    ? error
+                    : error?.message || "Unknown microphone error"
+            );
+        };
+
+        const handleMicStarted = () => {
+            console.log("Microphone started");
+            setErrorMessage("");
+        };
+
+        const handleMicStopped = () => {
+            console.log("Microphone stopped");
+            // Reset bar when stopped
+            if (bar) {
+                bar.scale.y = 1; // Reset to initial scale related to 0.1 height
+                bar.position.y = -0.5;
+            }
+        };
+
+        const audioDataListenerId = mic.addAudioDataListener(handleAudioData);
+        const errorListenerId = mic.addErrorListener(handleMicError);
+        const startListenerId = mic.addStartListener(handleMicStarted);
+        const stopListenerId = mic.addStopListener(handleMicStopped);
+
         const handleResize = () => {
-            if (mountRef.current && rendererRef.current && cameraRef.current) {
-                const width = mountRef.current.clientWidth;
-                const height = mountRef.current.clientHeight;
-                rendererRef.current.setSize(width, height);
-                cameraRef.current.aspect = width / height;
-                cameraRef.current.updateProjectionMatrix();
+            if (camera && renderer && currentMount) {
+                const newWidth = currentMount.clientWidth;
+                const newHeight = currentMount.clientHeight;
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(newWidth, newHeight);
             }
         };
         window.addEventListener("resize", handleResize);
 
         return () => {
-            cancelAnimationFrame(animationFrameIdRef.current);
-            window.removeEventListener("resize", handleResize);
-            
-            // Check if the canvas is still a child before removing
-            if (rendererRef.current && rendererRef.current.domElement && rendererRef.current.domElement.parentNode === mountRef.current) {
-              mountRef.current.removeChild(rendererRef.current.domElement);
-            }
-            
-            // Dispose Three.js objects
-            geometry.dispose(); 
-            material.dispose();
-            if (rendererRef.current) rendererRef.current.dispose();
-        };
-    }, []); // Empty dependency array: runs only on mount and unmount
-
-    // Effect to update the amplitude ref whenever the state changes
-    useEffect(() => {
-        latestAmplitudeRef.current = latestAmplitude;
-    }, [latestAmplitude]);
-
-    // Microphone listeners effect
-    useEffect(() => {
-        if (!mic) return;
-
-        const handleData = (audioData) => {
-            // Calculate a simple average amplitude
-            let sum = 0;
-            for (let i = 0; i < audioData.length; i++) {
-                sum += Math.abs(audioData[i]);
-            }
-            const avgAmplitude =
-                audioData.length > 0 ? sum / audioData.length : 0;
-            setLatestAmplitude(avgAmplitude);
-        };
-
-        const handleError = (err) => {
-            setErrorMessage(err || "An unknown microphone error occurred.");
-            setStatusMessage("Error");
-        };
-
-        const handleStart = () => setStatusMessage("Recording...");
-        const handleStop = () => setStatusMessage("Stopped.");
-
-        const dataListenerId = mic.addAudioDataListener(handleData);
-        const errorListenerId = mic.addErrorListener(handleError);
-        const startListenerId = mic.addStartListener(handleStart);
-        const stopListenerId = mic.addStopListener(handleStop);
-
-        // Initial status
-        setStatusMessage(
-            mic.isRecording() ? "Recording..." : "Idle. Click Start."
-        );
-
-        return () => {
-            mic.removeAudioDataListener(dataListenerId);
+            mic.removeAudioDataListener(audioDataListenerId);
             mic.removeErrorListener(errorListenerId);
             mic.removeStartListener(startListenerId);
             mic.removeStopListener(stopListenerId);
+
+            if (animationIdRef.current) {
+                cancelAnimationFrame(animationIdRef.current);
+                animationIdRef.current = null;
+            }
+            window.removeEventListener("resize", handleResize);
+
+            if (
+                renderer &&
+                renderer.domElement &&
+                currentMount.contains(renderer.domElement)
+            ) {
+                currentMount.removeChild(renderer.domElement);
+            }
+
+            if (bar) {
+                if (bar.geometry) bar.geometry.dispose();
+                if (bar.material) bar.material.dispose();
+            }
+            if (renderer) renderer.dispose();
         };
     }, [mic]);
 
@@ -153,34 +140,63 @@ const ProviderDemo = () => {
             } catch (err) {
                 // Error should be caught by the error listener, but just in case:
                 setErrorMessage(err.message || "Failed to start microphone.");
-                setStatusMessage("Error");
             }
         }
     }, [mic]);
 
     return (
-        <div>
+        <div
+            style={{
+                padding: "20px",
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                maxWidth: "500px",
+                margin: "20px auto",
+                backgroundColor: "#f9f9f9",
+            }}
+        >
             <div
                 ref={mountRef}
                 style={{
                     width: "100%",
-                    height: "200px",
+                    height: "150px", // Fixed height, can adjust if needed
                     backgroundColor: "#111",
-                    marginBottom: "15px",
                     borderRadius: "4px",
+                    border: "1px solid #444",
+                    marginBottom: "10px", // Gap below canvas
+                }}
+            ></div>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                 }}
             >
-                {/* Three.js canvas will be appended here */}
+                <button
+                    onClick={handleToggleMicrophone}
+                    disabled={!mic}
+                    style={{ marginRight: "10px" }}
+                >
+                    {mic && mic.isRecording()
+                        ? "Stop Microphone"
+                        : "Start Microphone"}
+                </button>
+                {mic && <StatusDot isActive={mic.isRecording()} />}
             </div>
-            <button onClick={handleToggleMicrophone} disabled={!mic}>
-                {mic && mic.isRecording()
-                    ? "Stop Microphone"
-                    : "Start Microphone"}
-            </button>
-            <span className="status">Status: {statusMessage}</span>
-            {errorMessage && <div className="error">Error: {errorMessage}</div>}
+            {errorMessage && (
+                <div
+                    style={{
+                        color: "red",
+                        marginTop: "10px",
+                        textAlign: "center",
+                    }}
+                >
+                    Error: {errorMessage}
+                </div>
+            )}
         </div>
     );
-};
+}
 
 export default ProviderDemo;

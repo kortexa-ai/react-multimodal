@@ -1,10 +1,10 @@
 import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 
-import { MicrophoneProvider } from '../audio/MicrophoneProvider';
-import { useMicrophoneControl } from '../audio/hooks/useMicrophoneControl';
+import { MicrophoneProvider } from '../microphone/MicrophoneProvider';
+import { useMicrophoneControl } from '../microphone/hooks/useMicrophoneControl';
 
-import { CameraProvider } from '../video/CameraProvider';
-import { useCameraControl } from '../video/hooks/useCameraControl';
+import { CameraProvider } from '../camera/CameraProvider';
+import { useCameraControl } from '../camera/hooks/useCameraControl';
 
 import { MediaContext } from './mediaContext';
 import type { MediaProviderProps, MediaContextType } from './mediaTypes';
@@ -79,7 +79,7 @@ function InternalMediaOrchestrator({
             }
         }
 
-        // After attempts, check actual state for halt behavior if needed, 
+        // After attempts, check actual state for halt behavior if needed,
         // but use attemptOk for error messaging.
         const finalMicOk = mic.isRecording();
         const finalCamOk = cam.isOn;

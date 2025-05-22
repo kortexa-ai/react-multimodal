@@ -1,6 +1,12 @@
-import type { FacingMode, CameraContextType as ActualCameraControlType } from '../video/types';
-import type { UseMicrophoneProps, MicrophoneContextType as ActualMicrophoneControlType } from '../audio/types';
-import type { UseCameraProps } from '../video/useCamera';
+import type {
+    FacingMode,
+    CameraContextType as ActualCameraControlType,
+} from "../camera/types";
+import type {
+    UseMicrophoneProps,
+    MicrophoneContextType as ActualMicrophoneControlType,
+} from "../microphone/types";
+import type { UseCameraProps } from "../camera/useCamera";
 
 export interface MediaState {
     isAudioActive: boolean;
@@ -22,13 +28,13 @@ export interface MediaControls {
 }
 
 export interface MediaContextType extends MediaState, MediaControls {
-    cam: ActualCameraControlType | null; 
-    mic: ActualMicrophoneControlType | null; 
+    cam: ActualCameraControlType | null;
+    mic: ActualMicrophoneControlType | null;
 }
 
 export interface MediaProviderProps {
     children?: React.ReactNode;
     microphoneProps?: UseMicrophoneProps;
     cameraProps?: UseCameraProps;
-    startBehavior?: 'proceed' | 'halt';
+    startBehavior?: "proceed" | "halt";
 }
