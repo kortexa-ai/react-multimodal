@@ -29,11 +29,6 @@ const ProviderDemo = () => {
         // videoElementRef.current.style.display = 'none'; // Keep it off-DOM or hidden
 
         sceneRef.current = new THREE.Scene();
-        sceneRef.current.background = new THREE.Color(0x222222);
-
-        // Axes Helper
-        const axesHelper = new THREE.AxesHelper(100); // Made larger: 100 units
-        sceneRef.current.add(axesHelper);
 
         const width = mountRef.current.clientWidth;
         const height = mountRef.current.clientHeight;
@@ -47,10 +42,6 @@ const ProviderDemo = () => {
         );
         cameraRef.current.position.z = 10;
         cameraRef.current.lookAt(sceneRef.current.position); // Explicitly look at origin
-
-        // Camera Helper
-        const cameraHelper = new THREE.CameraHelper(cameraRef.current);
-        sceneRef.current.add(cameraHelper);
 
         rendererRef.current = new THREE.WebGLRenderer({ antialias: true });
         rendererRef.current.setSize(width, height);
@@ -71,18 +62,9 @@ const ProviderDemo = () => {
 
         const animate = () => {
             animationFrameIdRef.current = requestAnimationFrame(animate);
-            console.log("Animating...");
 
             // Now check our local videoElementRef.current
             if (videoTextureRef.current && videoElementRef.current) {
-                // Log video element state
-                console.log(
-                    `Video State: readyState=${videoElementRef.current.readyState}, ` +
-                    `paused=${videoElementRef.current.paused}, ` +
-                    `width=${videoElementRef.current.videoWidth}, ` +
-                    `height=${videoElementRef.current.videoHeight}`
-                );
-
                 if (
                     videoElementRef.current.readyState >= videoElementRef.current.HAVE_METADATA &&
                     !videoElementRef.current.paused &&
@@ -142,20 +124,26 @@ const ProviderDemo = () => {
             planeMaterial.dispose();
             if (videoTextureRef.current) videoTextureRef.current.dispose();
             if (rendererRef.current) rendererRef.current.dispose();
+
+            // Stop video stream if it's from our local element
+            if (videoElementRef.current && videoElementRef.current.srcObject) {
+                const stream = videoElementRef.current.srcObject; 
+                if (stream && typeof stream.getTracks === 'function') { 
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                videoElementRef.current.srcObject = null;
+            }
         };
     }, []);
 
     useEffect(() => {
-        console.log("[Effect cam] cam object:", cam);
         if (!cam) return;
 
         // Handle stream changes
         if (cam.stream && videoElementRef.current) {
-            console.log("[Effect cam] Assigning stream to local video element.");
             videoElementRef.current.srcObject = cam.stream;
             videoElementRef.current.play().catch(e => console.error("Error playing local video:", e));
         } else if (!cam.stream && videoElementRef.current) {
-            console.log("[Effect cam] Clearing stream from local video element.");
             videoElementRef.current.srcObject = null;
         }
 
@@ -167,8 +155,6 @@ const ProviderDemo = () => {
 
         const handleCameraStarted = () => {
             setStatusMessage("Camera Active");
-            // cam.videoElement is not used anymore. cam.stream is handled above.
-            console.log("[handleCameraStarted] Camera started event received. Stream should be in cam.stream.");
             // Ensure video plays if srcObject was set
             if (videoElementRef.current && videoElementRef.current.srcObject) {
                 videoElementRef.current.play().catch(e => console.error("Error playing local video in handleCameraStarted:", e));
@@ -177,8 +163,6 @@ const ProviderDemo = () => {
 
         const handleCameraStopped = () => {
             setStatusMessage("Camera Stopped. Click Start.");
-            // cam.stream will be null, handled by the stream change logic above
-            console.log("[handleCameraStopped] Camera stopped event received.");
         };
 
         const errorListenerId = cam.addErrorListener(handleError);
@@ -187,11 +171,9 @@ const ProviderDemo = () => {
 
         // Initial status based on cam.isOn (stream handling is separate)
         setStatusMessage(cam.isOn ? "Camera Active" : "Idle. Click Start.");
-        console.log(`[Effect cam] cam.isOn: ${cam.isOn}`);
         
         // If camera is already on (e.g. due to props), ensure stream is handled
         if (cam.isOn && cam.stream && videoElementRef.current && !videoElementRef.current.srcObject) {
-            console.log("[Effect cam] Initial camera ON state with stream. Assigning to local video element.");
             videoElementRef.current.srcObject = cam.stream;
             videoElementRef.current.play().catch(e => console.error("Error playing local video on initial ON state:", e));
         }
