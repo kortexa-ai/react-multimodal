@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useMediaControl } from "../../../index";
-import StatusDot from '../../common/StatusDot';
-import { Camera, CameraOff, Mic, MicOff, Play, Square } from 'lucide-react';
-import CameraView from '../../common/CameraView';
-import MicrophoneView from '../../common/MicrophoneView';
+import StatusDot from "../../common/StatusDot";
+import { Camera, CameraOff, Mic, MicOff, Play, Square } from "lucide-react";
+import CameraView from "../../common/CameraView";
+import MicrophoneView from "../../common/MicrophoneView";
 
 const ProviderDemo = () => {
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
@@ -43,7 +43,7 @@ const ProviderDemo = () => {
 
     const handleToggleMicrophone = useCallback(async () => {
         setMicErrorMessage("");
-        if (!media.mic || typeof media.mic.isRecording !== 'function') return;
+        if (!media.mic || typeof media.mic.isRecording !== "function") return;
         if (media.mic.isRecording()) {
             media.mic.stop();
         } else {
@@ -51,7 +51,9 @@ const ProviderDemo = () => {
                 await media.mic.start();
             } catch (err) {
                 console.error("[MediaDemo] Error calling mic.start():", err);
-                setMicErrorMessage(err.message || "Failed to start microphone.");
+                setMicErrorMessage(
+                    err.message || "Failed to start microphone."
+                );
             }
         }
     }, [media.mic]);
@@ -73,7 +75,11 @@ const ProviderDemo = () => {
     }, [media]);
 
     if (!media) {
-        return <div className="card-container"><p className="status-text">Loading media controls...</p></div>;
+        return (
+            <div className="card-container">
+                <p className="status-text">Loading media controls...</p>
+            </div>
+        );
     }
 
     return (
@@ -87,7 +93,7 @@ const ProviderDemo = () => {
                 <p className="error-message">{cameraErrorMessage}</p>
             )}
 
-            <MicrophoneView mic={media.mic} />
+            <MicrophoneView mic={media.audioStream} />
             {micErrorMessage && (
                 <p className="error-message">{micErrorMessage}</p>
             )}
@@ -117,7 +123,11 @@ const ProviderDemo = () => {
                 <button
                     onClick={handleToggleCamera}
                     disabled={!media.cam}
-                    title={media.cam && media.cam.isOn ? "Stop Camera" : "Start Camera"}
+                    title={
+                        media.cam && media.cam.isOn
+                            ? "Stop Camera"
+                            : "Start Camera"
+                    }
                 >
                     {media.cam && media.cam.isOn ? <CameraOff /> : <Camera />}
                 </button>
