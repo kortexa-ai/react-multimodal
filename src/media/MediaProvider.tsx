@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, useEffect, type ReactNode, useRef } from 'react';
 
 import { MicrophoneProvider } from '../microphone/MicrophoneProvider';
 import { useMicrophoneControl } from '../microphone/hooks/useMicrophoneControl';
@@ -26,10 +26,14 @@ function InternalMediaOrchestrator({
     const cam = useCameraControl();
     const hands = useHands();
 
+    const videoElementForHandsInternalRef = useRef<HTMLVideoElement | null>(null);
+    const [attemptedHandsStartInCycle, setAttemptedHandsStartInCycle] = useState(false);
+
     const [mediaOrchestrationError, setMediaOrchestrationError] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(false);
     const [currentAudioError, setCurrentAudioError] = useState<string | null | undefined>(null);
     const [currentVideoError, setCurrentVideoError] = useState<string | null | undefined>(null);
+    const [currentHandsError, setCurrentHandsError] = useState<string | null | undefined>(null);
 
     useEffect(() => {
         const errorListenerId = mic.addErrorListener(setCurrentAudioError);
@@ -41,122 +45,203 @@ function InternalMediaOrchestrator({
         return () => cam.removeErrorListener(errorListenerId);
     }, [cam]);
 
+    useEffect(() => {
+        if (hands) {
+            const errorListenerId = hands.addErrorListener(setCurrentHandsError);
+            return () => hands.removeErrorListener(errorListenerId);
+        }
+        return () => { }; // No-op if hands is null
+    }, [hands]);
+
     const isAudioActive = mic.isRecording();
     const isVideoActive = cam.isOn;
+    const isHandTrackingActive = hands?.isTracking ?? false;
     const isMediaActive = isAudioActive && isVideoActive;
 
     const audioStream = null;
     const videoStream = cam.stream;
     const videoFacingMode = cam.facingMode;
+    const currentHandsData = hands?.handsData ?? null;
+
+    const setVideoElementForHands = useCallback((element: HTMLVideoElement | null) => {
+        videoElementForHandsInternalRef.current = element;
+        if (!element) {
+            setAttemptedHandsStartInCycle(false);
+        }
+    }, []);
 
     const startMedia = useCallback(async () => {
-        if (isStarting || (isAudioActive && isVideoActive)) return;
+        if (isStarting || (isAudioActive && isVideoActive && (!videoElementForHandsInternalRef.current || hands?.isTracking))) return;
 
         setIsStarting(true);
         setMediaOrchestrationError(null);
-        // Keep currentAudioError and currentVideoError for persistent listener-based errors
-        // but we'll rely on direct try-catch for startMedia's immediate error reporting.
+        setAttemptedHandsStartInCycle(false);
 
-        let micAttemptOk = isAudioActive;
-        let camAttemptOk = isVideoActive;
+        let localMicAttemptOk = isAudioActive;
+        let localCamAttemptOk = isVideoActive;
+
         let micStartError: string | null = null;
         let camStartError: string | null = null;
 
-        if (!isAudioActive) {
+        if (mic && !isAudioActive) {
             try {
                 await mic.start();
-                micAttemptOk = true; // If no error, attempt was successful
+                localMicAttemptOk = true;
             } catch (err) {
-                micAttemptOk = false;
+                localMicAttemptOk = false;
                 micStartError = err instanceof Error ? err.message : String(err);
             }
         }
 
-        if (!isVideoActive) {
+        if (cam && !isVideoActive) {
             try {
                 await cam.startCamera();
-                camAttemptOk = true; // If no error, attempt was successful
+                localCamAttemptOk = true;
             } catch (err) {
-                camAttemptOk = false;
+                localCamAttemptOk = false;
                 camStartError = err instanceof Error ? err.message : String(err);
             }
         }
 
-        // After attempts, check actual state for halt behavior if needed,
-        // but use attemptOk for error messaging.
-        const finalMicOk = mic.isRecording();
-        const finalCamOk = cam.isOn;
-
         if (startBehavior === 'halt') {
-            if (!micAttemptOk || !camAttemptOk) {
-                // If halt and any attempt failed, stop everything that might have started.
-                const micErrMsg = micStartError || (micAttemptOk ? '' : 'Failed to start');
-                const camErrMsg = camStartError || (camAttemptOk ? '' : 'Failed to start');
-                setMediaOrchestrationError(
-                    `Media start halted: Mic ${micAttemptOk ? 'OK' : `FAIL (${micErrMsg})`}. Cam ${camAttemptOk ? 'OK' : `FAIL (${camErrMsg})`}.`
-                );
-                if (mic.isRecording()) mic.stop(); // Stop if it managed to start despite error or before halt
-                if (cam.isOn) cam.stopCamera(); // Stop if it managed to start despite error or before halt
+            const shouldHalt = !localMicAttemptOk || !localCamAttemptOk;
+            if (shouldHalt) {
+                const micErrMsg = micStartError || (localMicAttemptOk ? '' : 'Failed to start');
+                const camErrMsg = camStartError || (localCamAttemptOk ? '' : 'Failed to start');
+                const errorMsg = `Media start halted: Mic ${localMicAttemptOk ? 'OK' : `FAIL (${micErrMsg})`}. Cam ${localCamAttemptOk ? 'OK' : `FAIL (${camErrMsg})`}.`;
+                setMediaOrchestrationError(errorMsg);
+
+                if (localMicAttemptOk && mic?.isRecording() && !isAudioActive) mic.stop();
+                if (localCamAttemptOk && cam?.isOn && !isVideoActive) cam.stopCamera();
                 setIsStarting(false);
                 return;
             }
-        } else { // 'proceed' behavior
-            if (!micAttemptOk && !camAttemptOk) {
-                setMediaOrchestrationError(`Both microphone and camera failed to start. Mic: ${micStartError || 'Unknown'}. Cam: ${camStartError || 'Unknown'}`);
-            } else if (!micAttemptOk) {
-                setMediaOrchestrationError(`Microphone failed to start: ${micStartError || 'Unknown'}. Camera ${finalCamOk ? 'proceeded' : 'status unknown'}.`);
-            } else if (!camAttemptOk) {
-                setMediaOrchestrationError(`Camera failed to start: ${camStartError || 'Unknown'}. Microphone ${finalMicOk ? 'proceeded' : 'status unknown'}.`);
+        } else {
+            const errorParts: string[] = [];
+            if (!localMicAttemptOk) errorParts.push(`Mic: ${micStartError || 'Unknown'}`);
+            if (!localCamAttemptOk) errorParts.push(`Cam: ${camStartError || 'Unknown'}`);
+            if (errorParts.length > 0) {
+                setMediaOrchestrationError(`Failed to start: ${errorParts.join('; ')}. Others proceeded if successful.`);
             }
-            // If both micAttemptOk and camAttemptOk are true, no error message is set.
         }
-
         setIsStarting(false);
-    }, [isStarting, isAudioActive, isVideoActive, mic, cam, startBehavior]);
+    }, [
+        isStarting, isAudioActive, isVideoActive, videoElementForHandsInternalRef, hands,
+        mic, cam, startBehavior
+    ]);
+
+    useEffect(() => {
+        const videoEl = videoElementForHandsInternalRef.current;
+
+        if (cam?.isOn && cam.stream && videoEl && hands && !hands.isTracking && !attemptedHandsStartInCycle) {
+            setAttemptedHandsStartInCycle(true);
+
+            const startHandsAsync = async () => {
+                try {
+                    if (videoEl.srcObject !== cam.stream) {
+                        videoEl.srcObject = cam.stream;
+                    }
+
+                    if (videoEl.readyState < HTMLMediaElement.HAVE_METADATA) {
+                        await new Promise<void>((resolve, reject) => {
+                            const onLoadedMetadata = () => {
+                                videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                                videoEl.removeEventListener('error', onError);
+                                resolve();
+                            };
+                            const onError = (e: Event) => {
+                                videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                                videoEl.removeEventListener('error', onError);
+                                console.error("[MediaProvider HandsEffect] Video element error while waiting for loadedmetadata:", e);
+                                reject(new Error("Video element error before hand tracking."));
+                            };
+                            videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
+                            videoEl.addEventListener('error', onError);
+
+                            const timeoutId = setTimeout(() => {
+                                videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                                videoEl.removeEventListener('error', onError);
+                                console.error("[MediaProvider HandsEffect] Timeout waiting for video loadedmetadata.");
+                                reject(new Error("Timeout waiting for video loadedmetadata for hand tracking."));
+                            }, 3000);
+
+                            if (videoEl.readyState >= HTMLMediaElement.HAVE_METADATA) {
+                                clearTimeout(timeoutId);
+                                onLoadedMetadata();
+                            }
+                        });
+                    }
+
+                    await hands.startTracking(videoEl);
+                } catch (err) {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    console.error("MediaProvider: Error starting hand tracking (async):", errorMsg);
+                    setMediaOrchestrationError(prev => {
+                        const handsErrorPart = `Hands: ${errorMsg}`;
+                        if (prev && prev.includes("Hands:")) return prev.replace(/Hands: [^.]+(\.)?/, handsErrorPart + '.');
+                        if (prev && !prev.endsWith('.')) return `${prev}. ${handsErrorPart}`;
+                        if (prev) return `${prev} ${handsErrorPart}`;
+                        return `Failed to start: ${handsErrorPart}`;
+                    });
+                }
+            };
+            startHandsAsync();
+        }
+    }, [cam?.isOn, cam?.stream, hands, hands?.isTracking, attemptedHandsStartInCycle, videoElementForHandsInternalRef]);
+
+    useEffect(() => {
+        if (cam && !cam.isOn) {
+            setAttemptedHandsStartInCycle(false);
+        }
+    }, [cam, cam?.isOn]);
 
     const stopMedia = useCallback(() => {
-        if (mic.isRecording()) {
-            mic.stop();
-        }
-        if (cam.isOn) {
-            cam.stopCamera();
-        }
+        if (mic?.isRecording()) mic.stop();
+        if (cam?.isOn) cam.stopCamera();
+        if (hands?.isTracking) hands.stopTracking();
         setMediaOrchestrationError(null);
         setCurrentAudioError(null);
         setCurrentVideoError(null);
+        setCurrentHandsError(null);
         setIsStarting(false);
-    }, [mic, cam]);
+    }, [mic, cam, hands]);
 
     const toggleMedia = useCallback(async () => {
-        if (isMediaActive) {
+        if (isAudioActive && isVideoActive) {
             stopMedia();
         } else {
             await startMedia();
         }
-    }, [isMediaActive, startMedia, stopMedia]);
+    }, [isAudioActive, isVideoActive, startMedia, stopMedia]);
 
-    const contextValue = useMemo<MediaContextType>(() => ({
-        isAudioActive,
-        isVideoActive,
-        isMediaActive,
-        audioStream,
-        videoStream,
-        videoFacingMode,
-        audioError: currentAudioError,
-        videoError: currentVideoError,
-        mediaError: mediaOrchestrationError,
-        startMedia,
-        stopMedia,
-        toggleMedia,
-        cam,
-        mic,
-        hands,
-    }), [
-        isAudioActive, isVideoActive, isMediaActive,
-        audioStream, videoStream, videoFacingMode,
-        currentAudioError, currentVideoError, mediaOrchestrationError,
+    const contextValue = useMemo<MediaContextType>(() => {
+        return {
+            isAudioActive,
+            isVideoActive,
+            isHandTrackingActive,
+            isMediaActive,
+            audioStream,
+            videoStream,
+            videoFacingMode,
+            currentHandsData,
+            audioError: currentAudioError,
+            videoError: currentVideoError,
+            handsError: currentHandsError,
+            mediaError: mediaOrchestrationError,
+            startMedia,
+            stopMedia,
+            toggleMedia,
+            cam,
+            mic,
+            hands,
+            setVideoElementForHands,
+        }
+    }, [
+        isAudioActive, isVideoActive, isHandTrackingActive, isMediaActive,
+        audioStream, videoStream, videoFacingMode, currentHandsData,
+        currentAudioError, currentVideoError, currentHandsError, mediaOrchestrationError,
         startMedia, stopMedia, toggleMedia,
-        cam, mic, hands
+        cam, mic, hands, setVideoElementForHands
     ]);
 
     return (
@@ -177,7 +262,9 @@ export function MediaProvider({
         <MicrophoneProvider {...microphoneProps}>
             <CameraProvider {...cameraProps}>
                 <HandsProvider {...handsProps}>
-                    <InternalMediaOrchestrator startBehavior={startBehavior}>
+                    <InternalMediaOrchestrator
+                        startBehavior={startBehavior}
+                    >
                         {children}
                     </InternalMediaOrchestrator>
                 </HandsProvider>

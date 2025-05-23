@@ -44,7 +44,7 @@ const FINGERTIP_COLORS = {
 const LANDMARK_RADIUS = 5;
 const LINE_WIDTH = 3;
 
-function CameraView({ stream, onVideoElementReady, handsData }) {
+function CameraView({ stream, onVideoElementReady, handsData, showHands = true }) {
     const mountRef = useRef(null);
     const videoElementRef = useRef(null);
     const rendererRef = useRef(null); // To store renderer instance for cleanup
@@ -59,8 +59,11 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
     const overlayCanvasRef = useRef(null);
     const [overlayWidth, setOverlayWidth] = useState(0);
     const [overlayHeight, setOverlayHeight] = useState(0);
+    const prevStream = useRef(stream); // For tracking stream changes
 
     useEffect(() => {
+        prevStream.current = stream;
+
         const currentMount = mountRef.current;
         if (!currentMount) return;
 
@@ -226,6 +229,7 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
                     const videoAspect = videoW / videoH;
                     const planeHeight = 1;
                     const planeWidth = planeHeight * videoAspect;
+
                     if (
                         videoPlaneRef.current &&
                         videoPlaneRef.current.geometry
@@ -236,11 +240,11 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
                         videoPlaneRef.current.geometry =
                             new THREE.PlaneGeometry(planeWidth, planeHeight);
                     }
-                    videoElement
+                    videoElement  
                         .play()
                         .catch((e) =>
                             console.error(
-                                "CameraView: Error re-playing video:",
+                                "CameraView: Error playing video in loadedmetadata:",
                                 e
                             )
                         );
@@ -249,14 +253,6 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
                     "loadedmetadata",
                     videoMetadataListenerRef.current
                 );
-                videoElement
-                    .play()
-                    .catch((e) =>
-                        console.error(
-                            "CameraView: Error playing video on stream change:",
-                            e
-                        )
-                    );
             }
         } else {
             // Cleanup Three.js if stream is removed
@@ -423,8 +419,8 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, overlayWidth, overlayHeight); // Clear previous drawings
 
-        if (!handsData || !handsData.detectedHands || overlayWidth === 0 || overlayHeight === 0) {
-            return; // No data or canvas not ready
+        if (!showHands || !handsData || !handsData.detectedHands || overlayWidth === 0 || overlayHeight === 0) {
+            return; // No data, canvas not ready, or showHands is false
         }
 
         handsData.detectedHands.forEach(hand => {
@@ -464,7 +460,7 @@ function CameraView({ stream, onVideoElementReady, handsData }) {
             }
         });
 
-    }, [handsData, overlayWidth, overlayHeight]);
+    }, [handsData, overlayWidth, overlayHeight, showHands]);
 
     // The div that Three.js will render into.
     // Its class for styling (e.g., camera-view-container) should be applied by the parent component.
