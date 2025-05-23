@@ -166,6 +166,8 @@ function CameraView({ stream, onVideoElementReady, handsData, showHands = true }
                 texture.needsUpdate = true; // Important for texture changes
                 // --- End of new "cover" logic ---
 
+                videoPlaneRef.current.scale.x = -1; // Mirror the video plane for a true mirror effect
+
                 if (cameraRef.current)
                     cameraRef.current.lookAt(newVideoPlane.position);
 

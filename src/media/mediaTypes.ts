@@ -36,6 +36,11 @@ export interface MediaContextType extends MediaState, MediaControls {
     mic: ActualMicrophoneControlType | null;
     hands: ActualHandsControlType | null;
     setVideoElementForHands: (element: HTMLVideoElement | null) => void;
+    // New properties for granular hand control
+    startHands: () => Promise<void>;
+    stopHands: () => void;
+    isStartingHands: boolean;
+    isVideoElementForHandsSet: boolean; 
 }
 
 export interface MediaProviderProps {

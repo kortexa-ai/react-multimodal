@@ -49,6 +49,9 @@ export interface UseHandsProps {
     onError?: (error: string) => void;
     onTrackingStarted?: () => void;
     onTrackingStopped?: () => void;
+    onResults?: (detectedHands: DetectedHand[], image?: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | ImageBitmap) => void; // Callback with processed DetectedHand array and original image
+    onInitialLoad?: () => void; // Callback when the first hand data is successfully processed
+    handsVersion?: string; // Add this line
 }
 
 export interface HandsControl {
