@@ -6,7 +6,7 @@ import type {
     MicrophoneContextType as ActualMicrophoneControlType,
     UseMicrophoneProps,
 } from "../microphone/types";
-import type { UseCameraProps } from "../camera/useCamera";
+import type { UseCameraProps } from "../camera/hooks/useCamera";
 import type { HandsContextType as ActualHandsControlType, UseHandsProps, HandsData } from "../hands/types";
 
 export interface MediaState {
@@ -14,7 +14,7 @@ export interface MediaState {
     isVideoActive: boolean;
     isHandTrackingActive?: boolean;
     isMediaActive: boolean;
-    audioStream: MediaStream | null; 
+    audioStream: MediaStream | null;
     videoStream: MediaStream | null;
     videoFacingMode: FacingMode | undefined;
     audioError?: string | null;
@@ -40,7 +40,7 @@ export interface MediaContextType extends MediaState, MediaControls {
     startHands: () => Promise<void>;
     stopHands: () => void;
     isStartingHands: boolean;
-    isVideoElementForHandsSet: boolean; 
+    isVideoElementForHandsSet: boolean;
 }
 
 export interface MediaProviderProps {

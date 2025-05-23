@@ -53,7 +53,6 @@ Wrap your application or relevant component tree with `MediaProvider`.
 
 ```jsx
 // App.js or your main component
-import React from 'react';
 import { MediaProvider } from '@kortexa-ai/react-multimodal';
 import MyComponent from './MyComponent';
 

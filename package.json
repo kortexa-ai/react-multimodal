@@ -30,6 +30,7 @@
     "type": "module",
     "files": [
         "dist",
+        "src/examples",
         "README.md",
         "LICENSE",
         "CONTRIBUTING.md",

@@ -74,3 +74,5 @@ export interface HandsControl {
 
 // Context will provide the control object
 export type HandsContextType = HandsControl | null;
+
+export type HandsProviderProps = UseHandsProps;

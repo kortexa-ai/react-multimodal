@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { CameraContext } from './context';
-import { useCamera, type UseCameraProps } from './useCamera'; // Adjusted path
+import { useCamera, type UseCameraProps } from './hooks/useCamera';
 import { cameraDispatcher } from '../utils/EventDispatcher';
 import type {
     CameraContextType,
@@ -8,7 +8,7 @@ import type {
     CameraFacingModeHandler,
     CameraErrorHandler,
     CameraLifeCycleHandler,
-    FacingMode // Added import for FacingMode type
+    FacingMode
 } from './types';
 
 export interface CameraProviderProps extends UseCameraProps {

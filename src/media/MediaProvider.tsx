@@ -31,10 +31,11 @@ import { useMicrophoneControl } from '../microphone/hooks/useMicrophoneControl';
 import { CameraProvider } from '../camera/CameraProvider';
 import { useCameraControl } from '../camera/hooks/useCameraControl';
 
-import { HandsProvider, useHands } from '../hands/HandsProvider';
+import { HandsProvider } from '../hands/HandsProvider';
 
-import { MediaContext } from './mediaContext';
-import type { MediaProviderProps, MediaContextType } from './mediaTypes';
+import { MediaContext } from './context';
+import type { MediaProviderProps, MediaContextType } from './types';
+import { useHands } from '../hands/hooks/useHands';
 
 const DEFAULT_START_BEHAVIOR: 'proceed' | 'halt' = 'proceed';
 
@@ -107,7 +108,7 @@ function InternalMediaOrchestrator({
                 hands.removeErrorListener(errorListenerId);
             };
         }
-        return () => {}; // No-op if hands is null
+        return () => { }; // No-op if hands is null
     }, [hands]);
 
     const isAudioActive = mic.isRecording();
@@ -192,7 +193,7 @@ function InternalMediaOrchestrator({
             setCurrentHandsError(errorMsg);
             // If startTracking fails, ensure isTracking is false (though useHandsControl should handle this)
             if (hands?.isTracking) {
-                 console.warn('[MediaOrchestrator] startHandsAsyncInternal: hands.isTracking is true after a startTracking error. This might be unexpected.');
+                console.warn('[MediaOrchestrator] startHandsAsyncInternal: hands.isTracking is true after a startTracking error. This might be unexpected.');
             }
             throw err; // Re-throw for the caller to handle
         }
@@ -288,7 +289,7 @@ function InternalMediaOrchestrator({
                     // For now, we just log and the error is set. The user might expect media to stop if hands are critical.
                     // This part might need refinement based on desired UX for 'halt' with hands.
                     setMediaOrchestrationError(`Failed to start hand tracking. Halting media start. Error: ${currentHandsError || 'Unknown hands error'}`);
-                     console.warn('[MediaOrchestrator] startMedia: Hand tracking failed with startBehavior=halt. Media (mic/cam) might still be running.');
+                    console.warn('[MediaOrchestrator] startMedia: Hand tracking failed with startBehavior=halt. Media (mic/cam) might still be running.');
                 }
             }
         }

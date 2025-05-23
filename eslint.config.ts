@@ -21,6 +21,7 @@ export default tseslint.config(
             'public/**',
             'server/**',
             'functions/**',
+            'src/examples/**',
         ]
     },
     {

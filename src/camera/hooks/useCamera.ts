@@ -1,6 +1,6 @@
 // This hook will contain the core camera logic
 import { useState, useEffect, useCallback } from 'react';
-import type { FacingMode } from './types';
+import type { FacingMode } from '../types';
 
 export interface UseCameraProps {
     defaultFacingMode?: FacingMode;
@@ -35,7 +35,7 @@ export const useCamera = ({
             if (videoDevices.length > 0 && !currentDeviceId) {
                 // Try to set a default device based on facing mode if no specific ID is given
                 const preferredDevice = videoDevices.find(device => {
-                    const deviceFacingMode = device.label.toLowerCase().includes('front') ? 'user' : 
+                    const deviceFacingMode = device.label.toLowerCase().includes('front') ? 'user' :
                                              device.label.toLowerCase().includes('back') ? 'environment' : null;
                     return deviceFacingMode === facingMode;
                 });
@@ -56,7 +56,7 @@ export const useCamera = ({
     useEffect(() => {
         if (typeof window !== 'undefined' && 'ontouchstart' in window) {
             // Only set to environment if it's the initial default and no specific device is set
-            if (defaultFacingMode === 'user' && !defaultDeviceId) { 
+            if (defaultFacingMode === 'user' && !defaultDeviceId) {
                 setFacingMode('environment');
             }
         }
@@ -148,7 +148,7 @@ export const useCamera = ({
             // For simplicity, we'll just try to restart with the new facingMode constraint if no specific device found
             // This relies on the browser picking a suitable camera for the facingMode
             setCurrentDeviceId(undefined); // Let the browser choose based on facingMode
-            await startCamera(); 
+            await startCamera();
         } else {
             onError?.('No alternative camera found for flipping.');
         }
