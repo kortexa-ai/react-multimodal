@@ -1,6 +1,6 @@
 {
     "name": "@kortexa-ai/react-multimodal",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A set of react components and hooks to help with multimodal input",
     "copyright": "Copyright © 2025 kortexa.ai",
     "author": {
@@ -36,17 +36,13 @@
         "CONTRIBUTING.md",
         "CHANGELOG.md"
     ],
-    "main": "./dist/index.js",
-    "style": "./dist/index.css",
+    "main": "./dist/react-multimodal.js",
     "exports": {
         ".": {
-            "styles": "./dist/index.css",
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.js",
-            "require": "./dist/index.js"
-        },
-        "./dist/style.css": "./dist/index.css",
-        "./style.css": "./dist/index.css"
+            "import": "./dist/react-multimodal.js",
+            "require": "./dist/react-multimodal.js"
+        }
     },
     "scripts": {
         "clean": "rm -rf dist dev-dist lib build coverage data server/data",

@@ -1,8 +1,4 @@
-interface StatusDotProps {
-    isActive: boolean;
-}
-
-function StatusDot({ isActive }: StatusDotProps) {
+function StatusDot({ isActive }) {
     return (
     <div
         style={{

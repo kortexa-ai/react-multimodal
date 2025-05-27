@@ -26,6 +26,7 @@
     -   Provides a consolidated context with all active media data and control functions (`startMedia`, `stopMedia`).
 
 Additionally, there are couple of reusable components in the examples:
+
 -   🖼️ **`CameraView`**: A utility component to easily render a video stream (e.g., from `CameraProvider` or `MediaProvider`) onto a canvas, often used for overlaying tracking visualizations. (`/src/examples/common/src/CameraView.jsx`)
 -   🎤 **`MicrophoneView`**: A utility component for a simple visualization of an audio stream (e.g., from `MicrophoneProvider` or `MediaProvider`) onto a canvas, often used for overlaying tracking visualizations. (`/src/examples/common/src/MicrophoneView.jsx`)
 
@@ -36,7 +37,9 @@ npm install @kortexa-ai/react-multimodal
 # or
 yarn add @kortexa-ai/react-multimodal
 ```
+
 You will also need to install peer dependencies if you plan to use features like hand tracking:
+
 ```bash
 npm install @mediapipe/tasks-vision @mediapipe/hands
 # or
@@ -53,19 +56,15 @@ Wrap your application or relevant component tree with `MediaProvider`.
 
 ```jsx
 // App.js or your main component
-import { MediaProvider } from '@kortexa-ai/react-multimodal';
-import MyComponent from './MyComponent';
+import { MediaProvider } from "@kortexa-ai/react-multimodal";
+import MyComponent from "./MyComponent";
 
 function App() {
-  return (
-    <MediaProvider
-      cameraProps={{}}
-      microphoneProps={{}}
-      handsProps={{}}
-    >
-      <MyComponent />
-    </MediaProvider>
-  );
+    return (
+        <MediaProvider cameraProps={{}} microphoneProps={{}} handsProps={{}}>
+            <MyComponent />
+        </MediaProvider>
+    );
 }
 
 export default App;
@@ -77,79 +76,95 @@ Use the `useMedia` hook within a component wrapped by `MediaProvider`.
 
 ```jsx
 // MyComponent.jsx
-import React, { useEffect, useRef } from 'react';
-import { useMedia } from '@kortexa-ai/react-multimodal';
+import React, { useEffect, useRef } from "react";
+import { useMedia } from "@kortexa-ai/react-multimodal";
 // Assuming CameraView is imported from your project or the library's examples
 // import CameraView from './CameraView';
 
 function MyComponent() {
-  const {
-    videoStream,
-    audioStream,
-    handsData, // Will be null or empty if handsProps is not provided
-    isMediaReady,
-    isStarting,
-    startMedia,
-    stopMedia,
-    currentVideoError,
-    currentAudioError,
-    currentHandsError,
-  } = useMedia();
+    const {
+        videoStream,
+        audioStream,
+        handsData, // Will be null or empty if handsProps is not provided
+        isMediaReady,
+        isStarting,
+        startMedia,
+        stopMedia,
+        currentVideoError,
+        currentAudioError,
+        currentHandsError,
+    } = useMedia();
 
-  useEffect(() => {
-    // Automatically start media when the component mounts
-    // Or trigger with a button click: startMedia();
-    if (!isMediaReady && !isStarting) {
-      startMedia();
-    }
+    useEffect(() => {
+        // Automatically start media when the component mounts
+        // Or trigger with a button click: startMedia();
+        if (!isMediaReady && !isStarting) {
+            startMedia();
+        }
 
-    return () => {
-      // Clean up when the component unmounts
-      stopMedia();
-    };
-  }, [startMedia, stopMedia, isMediaReady, isStarting]);
+        return () => {
+            // Clean up when the component unmounts
+            stopMedia();
+        };
+    }, [startMedia, stopMedia, isMediaReady, isStarting]);
 
-  if (currentVideoError) return <p>Video Error: {currentVideoError.message}</p>;
-  if (currentAudioError) return <p>Audio Error: {currentAudioError.message}</p>;
-  if (currentHandsError) return <p>Hands Error: {currentHandsError.message}</p>;
+    if (currentVideoError)
+        return <p>Video Error: {currentVideoError.message}</p>;
+    if (currentAudioError)
+        return <p>Audio Error: {currentAudioError.message}</p>;
+    if (currentHandsError)
+        return <p>Hands Error: {currentHandsError.message}</p>;
 
-  return (
-    <div>
-      <h2>Multimodal Demo</h2>
-      <button onClick={startMedia} disabled={isMediaReady || isStarting}>
-        {isStarting ? 'Starting...' : 'Start Media'}
-      </button>
-      <button onClick={stopMedia} disabled={!isMediaReady}>
-        Stop Media
-      </button>
-
-      {isMediaReady && videoStream && (
+    return (
         <div>
-          <h3>Camera Feed</h3>
-          {/* For CameraView, you'd import and use it like: */}
-          {/* <CameraView stream={videoStream} width="640" height="480" /> */}
-          <video
-            ref={(el) => { if (el) el.srcObject = videoStream; }}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: '640px', height: '480px', border: '1px solid black' }}
-          />
-        </div>
-      )}
+            <h2>Multimodal Demo</h2>
+            <button onClick={startMedia} disabled={isMediaReady || isStarting}>
+                {isStarting ? "Starting..." : "Start Media"}
+            </button>
+            <button onClick={stopMedia} disabled={!isMediaReady}>
+                Stop Media
+            </button>
 
-      {isMediaReady && handsData && handsData.landmarks && handsData.landmarks.length > 0 && (
-        <div>
-          <h3>Hand Landmarks Detected:</h3>
-          <pre>{JSON.stringify(handsData.landmarks, null, 2)}</pre>
-          {/* You would typically use this data to draw on a canvas or trigger interactions */}
-        </div>
-      )}
+            {isMediaReady && videoStream && (
+                <div>
+                    <h3>Camera Feed</h3>
+                    {/* For CameraView, you'd import and use it like: */}
+                    {/* <CameraView stream={videoStream} width="640" height="480" /> */}
+                    <video
+                        ref={(el) => {
+                            if (el) el.srcObject = videoStream;
+                        }}
+                        autoPlay
+                        playsInline
+                        muted
+                        style={{
+                            width: "640px",
+                            height: "480px",
+                            border: "1px solid black",
+                        }}
+                    />
+                </div>
+            )}
 
-      {isMediaReady && audioStream && <p>Microphone is active.</p>}
-      {!isMediaReady && !isStarting && <p>Click "Start Media" to begin.</p>}
-    </div>
-  );
+            {isMediaReady &&
+                handsData &&
+                handsData.landmarks &&
+                handsData.landmarks.length > 0 && (
+                    <div>
+                        <h3>Hand Landmarks Detected:</h3>
+                        <pre>
+                            {JSON.stringify(handsData.landmarks, null, 2)}
+                        </pre>
+                        {/* You would typically use this data to draw on a canvas or trigger interactions */}
+                    </div>
+                )}
+
+            {isMediaReady && audioStream && <p>Microphone is active.</p>}
+            {!isMediaReady && !isStarting && (
+                <p>Click "Start Media" to begin.</p>
+            )}
+        </div>
+    );
 }
 
 export default MyComponent;
@@ -174,6 +189,7 @@ The `handsData` from `useMedia` (if `handsProps` is provided) provides landmarks
 // )}
 // ...
 ```
+
 Refer to the `CameraView.jsx` in the examples directory for a practical implementation of drawing hand landmarks.
 
 ## API Highlights
@@ -215,16 +231,27 @@ While `MediaProvider` is recommended for most use cases, individual providers li
 ## Examples
 
 For more detailed and interactive examples, please check out the `/examples` directory within this repository. It includes demonstrations of:
+
 -   Using `MediaProvider` with `CameraView`.
 -   Visualizing hand landmarks and connections.
 -   Controlling media start/stop and handling states.
 
-## Contributing
+## Troubleshooting
 
-Contributions are welcome! Please feel free to submit issues and pull requests. (If you plan to contribute, please ensure code style consistency and add relevant tests.)
+Don't forget to deduplicate @mediapipe in your vite config:
 
-## License
+```ts
+resolve: {
+    dedupe: [
+        "react",
+        "react-dom",
+        "@kortexa-ai/react-multimodal",
+        "@mediapipe/hands",
+        "@mediapipe/tasks-vision",
+    ];
+}
+```
 
- 2025 kortexa.ai
+---
 
-(Consider adding an open-source license like MIT if this package is intended for public use.)
+© 2025 kortexa.ai

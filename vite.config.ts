@@ -27,16 +27,26 @@ export default defineConfig({
         assetsInlineLimit: 0,
         lib: {
             entry: path.resolve(__dirname, "./src/index.ts"),
-            name: "@kortexa-ai/auth",
+            name: "@kortexa-ai/react-multimodal",
             formats: ["es"],
         },
         rollupOptions: {
-            external: ["react", "react/jsx-runtime", "react-dom"],
+            external: [
+                "react",
+                "react-dom",
+                "react/jsx-runtime",
+                "@mediapipe/hands",
+                "@mediapipe/tasks-audio",
+                "@mediapipe/tasks-vision",
+            ],
             output: {
                 globals: {
                     react: "React",
-                    "react/jsx-runtime": "jsxRuntime",
                     "react-dom": "ReactDOM",
+                    "react/jsx-runtime": "jsxRuntime",
+                    "@mediapipe/hands": "mediapipeHands",
+                    "@mediapipe/tasks-audio": "mediapipeTasksAudio",
+                    "@mediapipe/tasks-vision": "mediapipeTasksVision",
                 },
             },
         },
