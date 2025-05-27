@@ -51,6 +51,7 @@
         "lint:fix": "npm run lint -- --fix",
         "typecheck": "tsc -p tsconfig.app.json --noEmit",
         "build": "vite build --mode production",
+        "build:nomin": "vite build --mode production --minify false --sourcemap inline",
         "validate": "npm run typecheck && npm run lint",
         "prepublishOnly": "npm run clean:examples && npm run validate && npm run build"
     },
