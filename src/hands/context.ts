@@ -1,6 +1,7 @@
 import { createContext } from "react";
-import type { HandsContextControl } from "./types";
+import type { HandsTrackingControl } from "./types";
 
-export const HandsContext = createContext<HandsContextControl>(
-    {} as HandsContextControl
+export const HandsContext = createContext<HandsTrackingControl>(
+    {} as HandsTrackingControl
 );
+HandsContext.displayName = "kortexa.ai:hands-tracking";
