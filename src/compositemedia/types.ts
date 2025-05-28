@@ -18,14 +18,14 @@ export interface CompositeMediaDevice {
     isVideoActive: boolean;
     isHandTrackingActive?: boolean;
     isMediaActive: boolean;
-    audioStream: MediaStream | null;
-    videoStream: MediaStream | null;
-    videoFacingMode: CameraFacingMode | undefined;
-    audioError?: string | null;
-    videoError?: string | null;
-    handsError?: string | null;
-    mediaError?: string | null;
-    currentHandsData?: HandsData | null;
+    audioStream?: MediaStream;
+    videoStream?: MediaStream;
+    videoFacingMode?: CameraFacingMode;
+    audioError?: string;
+    videoError?: string;
+    handsError?: string;
+    mediaError?: string;
+    currentHandsData?: HandsData;
     startMedia: () => Promise<void>;
     stopMedia: () => void;
     toggleMedia: () => Promise<void>;
@@ -33,9 +33,9 @@ export interface CompositeMediaDevice {
 }
 
 export interface CompositeMediaControl extends CompositeMediaDevice {
-    cam: CameraControl | null;
-    mic: MicrophoneControl | null;
-    hands: HandsTrackingControl | null;
+    cam: CameraControl;
+    mic: MicrophoneControl;
+    hands: HandsTrackingControl;
     setVideoElementForHands: (element: HTMLVideoElement | null) => void;
     // New properties for granular hand control
     startHands: () => Promise<void>;

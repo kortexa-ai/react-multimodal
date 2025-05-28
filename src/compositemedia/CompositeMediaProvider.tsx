@@ -58,11 +58,11 @@ function InternalMediaOrchestrator({
     // Flag to track if the user has explicitly stopped hands, to prevent auto-restart by useEffect.
     const [userExplicitlyStoppedHands, setUserExplicitlyStoppedHands] = useState(false);
 
-    const [mediaOrchestrationError, setMediaOrchestrationError] = useState<string | null>(null);
+    const [mediaOrchestrationError, setMediaOrchestrationError] = useState<string | undefined>(undefined);
     const [isStarting, setIsStarting] = useState(false); // True if startMedia is in progress
-    const [currentAudioError, setCurrentAudioError] = useState<string | null | undefined>(null);
-    const [currentVideoError, setCurrentVideoError] = useState<string | null | undefined>(null);
-    const [currentHandsError, setCurrentHandsError] = useState<string | null | undefined>(null);
+    const [currentAudioError, setCurrentAudioError] = useState<string | undefined>(undefined);
+    const [currentVideoError, setCurrentVideoError] = useState<string | undefined>(undefined);
+    const [currentHandsError, setCurrentHandsError] = useState<string | undefined>(undefined);
     // True if startHands or startHandsAsyncInternal is in progress for explicit hands start requests.
     const [isStartingHandsInternal, setIsStartingHandsInternal] = useState(false);
     const [isVideoElementForHandsSet, setIsVideoElementForHandsSet] = useState(false);
@@ -118,10 +118,10 @@ function InternalMediaOrchestrator({
     const isMediaActive = useMemo(() => isAudioActive && isVideoActive, [isAudioActive, isVideoActive]);
 
     // These are derived states, not primary input sources for the context, so can be null or actual streams.
-    const audioStream = useMemo(() => null, []); // MicrophoneProvider doesn't expose raw stream this way currently
-    const videoStream = useMemo(() => cam.stream, [cam]);
+    const audioStream = useMemo(() => undefined, []); // MicrophoneProvider doesn't expose raw stream this way currently
+    const videoStream = useMemo(() => cam.stream ?? undefined, [cam]);
     const videoFacingMode = useMemo(() => cam.facingMode, [cam]);
-    const currentHandsData = useMemo(() => hands?.handsData ?? null, [hands]);
+    const currentHandsData = useMemo(() => hands?.handsData ?? undefined, [hands]);
 
     // This log is very frequent due to re-renders. Keep it for now but be mindful.
     console.log('[MediaProvider] InternalOrchestrator render. States: isAudioActive:', isAudioActive, 'isVideoActive:', isVideoActive, 'isHandTrackingActive:', isHandTrackingActive, 'isStarting:', isStarting, 'isStartingHandsInternal:', isStartingHandsInternal, 'attemptedHandsStartInCycle:', attemptedHandsStartInCycle, 'isVideoElementForHandsSet:', isVideoElementForHandsSet);
@@ -162,7 +162,7 @@ function InternalMediaOrchestrator({
         const videoEl = videoElementForHandsInternalRef.current;
         console.log('[MediaOrchestrator] startHandsAsyncInternal: Setting attemptedHandsStartInCycle to true.');
         setAttemptedHandsStartInCycle(true);
-        setCurrentHandsError(null); // Clear previous hands error
+        setCurrentHandsError(undefined); // Clear previous hands error
 
         try {
             console.log(`[MediaOrchestrator] startHandsAsyncInternal: Video element readyState: ${videoEl.readyState}. Waiting for HAVE_METADATA if necessary.`);
@@ -214,13 +214,13 @@ function InternalMediaOrchestrator({
 
         setIsStarting(true);
         console.log('[MediaOrchestrator] startMedia: Set isStarting to true.');
-        setMediaOrchestrationError(null);
+        setMediaOrchestrationError(undefined);
         setAttemptedHandsStartInCycle(false); // Reset for this new media start cycle
         setUserExplicitlyStoppedHands(false); // Reset for this new media start cycle
         console.log('[MediaOrchestrator] startMedia: Reset attemptedHandsStartInCycle and userExplicitlyStoppedHands to false.');
-        setCurrentAudioError(null);
-        setCurrentVideoError(null);
-        setCurrentHandsError(null); // Clear all errors at the beginning of a full startMedia sequence
+        setCurrentAudioError(undefined);
+        setCurrentVideoError(undefined);
+        setCurrentHandsError(undefined); // Clear all errors at the beginning of a full startMedia sequence
 
         let localMicAttemptOk = isAudioActive;
         let localCamAttemptOk = isVideoActive;
@@ -384,10 +384,10 @@ function InternalMediaOrchestrator({
             console.log('[MediaOrchestrator] stopMedia: Stopping Camera. This should trigger useEffect to stop hands.');
             cam.stop();
         }
-        setMediaOrchestrationError(null);
-        setCurrentAudioError(null);
-        setCurrentVideoError(null);
-        setCurrentHandsError(null);
+        setMediaOrchestrationError(undefined);
+        setCurrentAudioError(undefined);
+        setCurrentVideoError(undefined);
+        setCurrentHandsError(undefined);
         setIsStarting(false); // Ensure isStarting is false if stopMedia is called during a start sequence.
         console.log('[MediaOrchestrator] stopMedia: Exiting.');
     }, [mic, cam, setMediaOrchestrationError, setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setIsStarting]);
@@ -421,7 +421,7 @@ function InternalMediaOrchestrator({
         setUserExplicitlyStoppedHands(false); // User is explicitly starting, so clear the flag.
         console.log('[MediaOrchestrator] startHands: Setting isStartingHandsInternal to true.');
         setIsStartingHandsInternal(true);
-        setCurrentHandsError(null); // Clear previous error
+        setCurrentHandsError(undefined);
 
         if (!hands) {
             const errorMsg = "Hand tracking service not available.";
