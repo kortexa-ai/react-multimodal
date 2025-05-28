@@ -121,10 +121,6 @@ export function useHandsTrackingDevice({
                 try {
                     onResultsRef.current(newDetectedHands, results.image);
                 } catch (error) {
-                    console.error(
-                        "[useHandsControl] Error in onResults callback:",
-                        error
-                    );
                     const errorMessage =
                         error instanceof Error ? error.message : String(error);
                     setCurrentError(errorMessage);
@@ -141,9 +137,6 @@ export function useHandsTrackingDevice({
                 newDetectedHands.length > 0
             ) {
                 initialLoadCompleteRef.current = true;
-                console.log(
-                    "[useHandsControl] processResults: Initial hand detection successful."
-                );
                 if (onInitialLoadRef.current) onInitialLoadRef.current();
             }
         },
@@ -160,51 +153,30 @@ export function useHandsTrackingDevice({
     );
 
     useEffect(() => {
-        console.log(
-            "[useHandsControl] useEffect[options, handsVersion]: Initializing MediaPipe Hands..."
-        );
-
         const handsInstance = new Hands({
-            locateFile: (file) => {
-                console.log(
-                    `[useHandsControl] locateFile: Attempting to locate ${file} using version ${handsVersion}`
-                );
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${handsVersion}/${file}`;
-            },
+            locateFile: (file) =>
+                `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${handsVersion}/${file}`,
         });
 
-        handsInstance.setOptions(options); // Use the actual options object here
+        handsInstance.setOptions(options);
         handsInstance.onResults(processResultsFromMediaPipe);
 
         handsRef.current = handsInstance;
-        console.log(
-            "[useHandsControl] MediaPipe Hands instance initialized with options:",
-            options
-        );
 
         return () => {
             if (handsRef.current) {
-                handsRef.current
-                    .close()
-                    .catch((err) =>
-                        console.error(
-                            "[useHandsControl] Error closing MediaPipe Hands:",
-                            err
-                        )
+                handsRef.current.close().catch((err) => {
+                    setCurrentError(
+                        err instanceof Error ? err.message : String(err)
                     );
+                });
                 handsRef.current = null;
-                console.log(
-                    "[useHandsControl] MediaPipe Hands instance closed."
-                );
             }
         };
     }, [options, handsVersion, processResultsFromMediaPipe]);
 
     const sendFrame = useCallback(async () => {
         if (!videoElementRef.current || !handsRef.current) {
-            console.warn(
-                "[useHandsControl] sendFrame: Video element or Hands instance not available. Cannot send frame."
-            );
             return;
         }
 
@@ -222,10 +194,6 @@ export function useHandsTrackingDevice({
         try {
             await handsRef.current.send({ image: videoElementRef.current });
         } catch (error) {
-            console.error(
-                "[useHandsControl] sendFrame: Error sending frame to MediaPipe Hands:",
-                error
-            );
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
             setCurrentError(errorMessage);
@@ -238,10 +206,6 @@ export function useHandsTrackingDevice({
 
         if (isTrackingRef.current) {
             animationFrameIdRef.current = requestAnimationFrame(sendFrame);
-        } else {
-            console.log(
-                `[useHandsControl] sendFrame: Loop terminated because isTrackingRef.current is false.`
-            );
         }
     }, [
         handsRef,
@@ -254,9 +218,6 @@ export function useHandsTrackingDevice({
     const startTracking = useCallback(
         async (videoElement: HTMLVideoElement) => {
             if (!handsRef.current) {
-                console.error(
-                    "[useHandsControl] startTracking: Hands instance not initialized."
-                );
                 setCurrentError("Hands instance not initialized.");
                 if (onErrorRef.current)
                     onErrorRef.current("Hands instance not initialized.");
@@ -266,40 +227,23 @@ export function useHandsTrackingDevice({
                 );
                 return;
             }
-            if (isTrackingRef.current) {
-                console.warn(
-                    "[useHandsControl] startTracking: Already tracking."
-                );
-                return;
-            }
+            if (isTrackingRef.current) return;
 
-            console.log(
-                "[useHandsControl] startTracking: Video element set:",
-                videoElement
-            );
             videoElementRef.current = videoElement;
             initialLoadCompleteRef.current = false; // Reset for new tracking session
 
             isTrackingRef.current = true;
-            console.log(
-                "[useHandsControl] startTracking: Before setIsTracking(true). isTrackingRef.current:",
-                isTrackingRef.current
-            );
             setIsTracking(true);
 
             if (animationFrameIdRef.current)
                 cancelAnimationFrame(animationFrameIdRef.current);
             animationFrameIdRef.current = requestAnimationFrame(sendFrame);
-            console.log(
-                "[useHandsControl] startTracking: Loop started. animationFrameIdRef:",
-                animationFrameIdRef.current
-            );
 
             if (onTrackingStartedRef.current) onTrackingStartedRef.current();
             startListenersRef.current.forEach(
                 (listener: () => void, _key: string) => listener()
             );
-            setCurrentError(null); // Clear previous errors
+            setCurrentError(null);
         },
         [
             sendFrame,
@@ -309,34 +253,16 @@ export function useHandsTrackingDevice({
             errorListenersRef,
             setCurrentError,
         ]
-    ); // Added setCurrentError
+    );
 
     const stopTracking = useCallback(() => {
-        console.log(
-            "[useHandsControl] stopTracking: Called. Current isTracking (state):",
-            isTracking,
-            "isTrackingRef.current:",
-            isTrackingRef.current
-        );
-        if (!isTrackingRef.current && !isTracking) return; // Already stopped or stopping
+        if (!isTrackingRef.current && !isTracking) return;
 
         isTrackingRef.current = false;
         setIsTracking(false);
-        console.log(
-            "[useHandsControl] stopTracking: After updates. isTracking (state should be false soon):",
-            isTracking,
-            "isTrackingRef.current:",
-            isTrackingRef.current,
-            "animationFrameIdRef:",
-            animationFrameIdRef.current
-        );
 
         if (animationFrameIdRef.current) {
             cancelAnimationFrame(animationFrameIdRef.current);
-            console.log(
-                "[useHandsControl] stopTracking: Cleared animation frame",
-                animationFrameIdRef.current
-            );
             animationFrameIdRef.current = null;
         }
 
@@ -344,7 +270,6 @@ export function useHandsTrackingDevice({
         stopListenersRef.current.forEach((listener: () => void, _key: string) =>
             listener()
         );
-        console.log("[useHandsControl] stopTracking: Completed.");
     }, [isTracking, onTrackingStoppedRef, stopListenersRef]);
 
     return {
