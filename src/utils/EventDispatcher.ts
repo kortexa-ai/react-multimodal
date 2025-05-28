@@ -8,7 +8,7 @@ export class EventDispatcher<EventMap extends Record<string, unknown>> {
     private listeners: Map<keyof EventMap, Map<string, EventListener<unknown>>> = new Map();
 
     addListener<E extends keyof EventMap>(
-        eventType: E, 
+        eventType: E,
         listener: EventListener<EventMap[E]>
     ): void {
         if (!this.listeners.has(eventType)) {
@@ -27,7 +27,7 @@ export class EventDispatcher<EventMap extends Record<string, unknown>> {
     }
 
     async dispatch<E extends keyof EventMap>(
-        eventType: E, 
+        eventType: E,
         data?: EventMap[E]
     ): Promise<void> {
         const eventListeners = this.listeners.get(eventType);
@@ -65,26 +65,3 @@ export class EventDispatcher<EventMap extends Record<string, unknown>> {
         return this.listeners.get(eventType as string)?.size ?? 0;
     }
 }
-
-// Microphone specific events type map
-export interface MicrophoneEventMap extends Record<string, unknown> {
-    audioData: Float32Array;
-    start: void;
-    stop: void;
-    error: string;
-}
-
-// Microphone event dispatcher instance
-export const microphoneDispatcher = new EventDispatcher<MicrophoneEventMap>();
-
-// Camera specific events type map
-export interface CameraEventMap extends Record<string, unknown> {
-    streamChanged: MediaStream | null;
-    started: void;
-    stopped: void;
-    facingModeChanged: 'user' | 'environment';
-    error: string;
-}
-
-// Camera event dispatcher instance
-export const cameraDispatcher = new EventDispatcher<CameraEventMap>();

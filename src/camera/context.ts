@@ -1,14 +1,7 @@
-import { createContext, useContext } from 'react';
-import type { CameraContextType } from './types';
+import { createContext } from "react";
+import type { CameraControl } from "./types";
 
-export const CameraContext = createContext<CameraContextType | undefined>(
+export const CameraContext = createContext<CameraControl | undefined>(
     undefined
 );
-
-export const useCameraContext = () => {
-    const context = useContext(CameraContext);
-    if (!context) {
-        throw new Error('useCameraContext must be used within a CameraProvider');
-    }
-    return context;
-};
+CameraContext.displayName = "kortexa.ai:camera";

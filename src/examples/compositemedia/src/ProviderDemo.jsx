@@ -1,10 +1,10 @@
 /*
 PROVIDER DEMO UI BEHAVIOR (Buttons & State Indicators):
 
-This demo showcases the MediaProvider's capabilities with Camera and Hands tracking.
+This demo showcases the CompositeMediaProvider's capabilities with Camera and Hands tracking.
 The UI elements (buttons, status indicators) should reflect and control the state of these providers according to the following rules:
 
-1.  **Global Start/Stop Buttons (MediaProvider master controls):**
+1.  **Global Start/Stop Buttons (CompositeMediaProvider master controls):**
     *   **Global Stop Button:**
         *   Enabled: If *any* media provider (Camera or Hands) is currently running.
         *   Disabled: If *all* media providers are stopped.
@@ -32,31 +32,43 @@ The UI elements (buttons, status indicators) should reflect and control the stat
 */
 
 import { useCallback } from "react";
-import { Camera, CameraOff, Mic, MicOff, Play, Square, Hand, HandMetal } from "lucide-react";
-import { useMediaControl } from "../../../index";
+import {
+    Camera,
+    CameraOff,
+    Mic,
+    MicOff,
+    Play,
+    Square,
+    Hand,
+    HandMetal,
+} from "lucide-react";
+import { useCompositeMedia } from "../../../index";
 import MicrophoneView from "../../common/src/MicrophoneView";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
-    const media = useMediaControl();
+    const media = useCompositeMedia();
 
     // Extract setVideoElementForHands to stabilize the callback's dependency
     const setVideoElementForHands = media?.setVideoElementForHands;
 
-    const handleVideoElementReady = useCallback((element) => {
-        if (setVideoElementForHands) {
-            setVideoElementForHands(element);
-        }
-    }, [setVideoElementForHands]);
+    const handleVideoElementReady = useCallback(
+        (element) => {
+            if (setVideoElementForHands) {
+                setVideoElementForHands(element);
+            }
+        },
+        [setVideoElementForHands]
+    );
 
     const handleToggleCamera = useCallback(async () => {
         if (!media.cam) return;
-        if (media.cam.isOn) {
-            media.cam.stopCamera();
+        if (media.cam.isRecording) {
+            media.cam.stop();
         } else {
             try {
-                await media.cam.startCamera();
+                await media.cam.start();
             } catch (err) {
                 console.error("[MediaDemo] Error toggling camera:", err);
             }
@@ -64,8 +76,8 @@ function ProviderDemo() {
     }, [media.cam]);
 
     const handleToggleMicrophone = useCallback(async () => {
-        if (!media.mic || typeof media.mic.isRecording !== "function") return;
-        if (media.mic.isRecording()) {
+        if (!media.mic) return;
+        if (media.mic.isRecording) {
             media.mic.stop();
         } else {
             try {
@@ -109,14 +121,16 @@ function ProviderDemo() {
     if (!media) {
         return (
             <div className="card-container">
-                <p className="status-text">Loading media controls...</p>
+                <p className="status-text">
+                    Loading composite media controls...
+                </p>
             </div>
         );
     }
 
     return (
         <div className="card-container">
-            <h2 className="card-title">Media Provider Demo</h2>
+            <h2 className="card-title">Composite Media Provider Demo</h2>
 
             <div className="camera-view-container">
                 <CameraView
@@ -219,6 +233,6 @@ function ProviderDemo() {
             </div>
         </div>
     );
-};
+}
 
 export default ProviderDemo;

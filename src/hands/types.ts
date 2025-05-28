@@ -1,4 +1,4 @@
-import type { Hands } from '@mediapipe/hands';
+import type { Hands } from "@mediapipe/hands";
 
 export interface HandLandmark {
     x: number;
@@ -10,7 +10,7 @@ export interface HandLandmark {
 export interface Handedness {
     score: number;
     index: number; // Typically 0 for Left, 1 for Right if two hands, but depends on MediaPipe output
-    label: 'Left' | 'Right' | string; // string for flexibility if more labels are possible
+    label: "Left" | "Right" | string; // string for flexibility if more labels are possible
 }
 
 export interface DetectedHand {
@@ -24,7 +24,11 @@ export interface MediaPipeHandsResults {
     multiHandLandmarks: HandLandmark[][];
     multiHandWorldLandmarks: HandLandmark[][];
     multiHandedness: Handedness[];
-    image?: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | ImageBitmap; // The image source processed
+    image?:
+        | HTMLImageElement
+        | HTMLVideoElement
+        | HTMLCanvasElement
+        | ImageBitmap; // The image source processed
 }
 
 // Our processed and stored hands data
@@ -43,24 +47,33 @@ export interface MediaPipeHandsOptions {
     locateFile?: (file: string, scriptPath?: string) => string;
 }
 
-export interface UseHandsProps {
+export interface HandsTrackingDeviceProps {
     options?: MediaPipeHandsOptions;
+    handsVersion?: string;
+    onInitialLoad?: () => void;
     onHandsData?: (data: HandsData) => void;
     onError?: (error: string) => void;
     onTrackingStarted?: () => void;
     onTrackingStopped?: () => void;
-    onResults?: (detectedHands: DetectedHand[], image?: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | ImageBitmap) => void; // Callback with processed DetectedHand array and original image
-    onInitialLoad?: () => void; // Callback when the first hand data is successfully processed
-    handsVersion?: string; // Add this line
+    onResults?: (
+        detectedHands: DetectedHand[],
+        image?:
+            | HTMLImageElement
+            | HTMLVideoElement
+            | HTMLCanvasElement
+            | ImageBitmap
+    ) => void;
 }
-
-export interface HandsControl {
+export interface HandsTrackingDevice {
     isTracking: boolean;
     handsData: HandsData | null;
     error: string | null;
     startTracking: (videoElement: HTMLVideoElement) => Promise<void>;
     stopTracking: () => void;
     getHandsInstance: () => Hands | null; // To get the raw MediaPipe Hands instance if needed
+}
+
+export interface HandsTrackingControl extends HandsTrackingDevice {
     // Event listener methods
     addHandsDataListener: (listener: (data: HandsData) => void) => string;
     removeHandsDataListener: (listenerId: string) => void;
@@ -72,7 +85,4 @@ export interface HandsControl {
     removeStopListener: (listenerId: string) => void;
 }
 
-// Context will provide the control object
-export type HandsContextType = HandsControl | null;
-
-export type HandsProviderProps = UseHandsProps;
+export type HandsProviderProps = HandsTrackingDeviceProps;

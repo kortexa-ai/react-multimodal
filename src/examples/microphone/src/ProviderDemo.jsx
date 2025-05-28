@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { Mic, MicOff } from "lucide-react";
-import { useMicrophoneControl } from "../../../index";
+import { useMicrophone } from "../../../index";
 import MicrophoneView from "../../common/src/MicrophoneView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
-    const mic = useMicrophoneControl();
+    const mic = useMicrophone();
     const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
@@ -42,7 +42,7 @@ function ProviderDemo() {
 
     const handleToggleMicrophone = useCallback(async () => {
         setErrorMessage("");
-        if (mic.isRecording()) {
+        if (mic.isRecording) {
             mic.stop();
         } else {
             try {
@@ -63,9 +63,9 @@ function ProviderDemo() {
             )}
             <div className="button-row">
                 <button onClick={handleToggleMicrophone} disabled={!mic}>
-                    {mic && mic.isRecording() ? <MicOff /> : <Mic />}
+                    {mic && mic.isRecording ? <MicOff /> : <Mic />}
                 </button>
-                {mic && <StatusDot isActive={mic.isRecording()} />}
+                {mic && <StatusDot isActive={mic.isRecording} />}
             </div>
         </div>
     );

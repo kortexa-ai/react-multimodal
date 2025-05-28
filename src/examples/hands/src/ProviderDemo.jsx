@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
-import { useCameraControl, useHandsControl } from "../../../index";
+import { useCamera, useHandsControl } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
-    const cam = useCameraControl();
+    const cam = useCamera();
     const hands = useHandsControl();
 
-    const [isCameraOn, setIsCameraOn] = useState(cam?.isOn || false);
+    const [isCameraOn, setIsCameraOn] = useState(cam?.isRecording || false);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
     const [currentStream, setCurrentStream] = useState(null);
     const [videoElementForHands, setVideoElementForHands] = useState(null);
@@ -18,7 +18,7 @@ function ProviderDemo() {
     const [detectedHandData, setDetectedHandData] = useState(null);
 
     useEffect(() => {
-        const handleStreamChange = (stream) => {
+        const handleStream = (stream) => {
             setCurrentStream(stream);
             if (stream) {
                 setIsCameraOn(true);
@@ -28,13 +28,13 @@ function ProviderDemo() {
         };
 
         const streamListenerId =
-            cam.addStreamChangedListener(handleStreamChange);
+            cam.addStreamListener(handleStream);
         if (cam.stream) {
-            handleStreamChange(cam.stream);
+            handleStream(cam.stream);
         }
 
         return () => {
-            cam.removeStreamChangedListener(streamListenerId);
+            cam.removeStreamListener(streamListenerId);
         };
     }, [cam]);
 
@@ -49,22 +49,29 @@ function ProviderDemo() {
                     : error?.message || "Unknown camera error"
             );
         };
-        const handleCamStarted = () => {
+        const handleCamStart = () => {
             setIsCameraOn(true);
             setCameraErrorMessage("");
         };
-        const handleCamStopped = () => {
+        const handleCamStop = () => {
             setIsCameraOn(false);
         };
 
         const errorListenerId = cam.addErrorListener(handleCamError);
-        const startListenerId = cam.addStartedListener(handleCamStarted);
-        const stopListenerId = cam.addStoppedListener(handleCamStopped);
+        const startListenerId = cam.addStartListener(handleCamStart);
+        const stopListenerId = cam.addStopListener(handleCamStop);
+
+        setIsCameraOn(cam.isRecording);
+        if (cam.isRecording && cam.stream) {
+            setCurrentStream(cam.stream);
+        } else {
+            setCurrentStream(null);
+        }
 
         return () => {
             cam.removeErrorListener(errorListenerId);
-            cam.removeStartedListener(startListenerId);
-            cam.removeStoppedListener(stopListenerId);
+            cam.removeStartListener(startListenerId);
+            cam.removeStopListener(stopListenerId);
         };
     }, [cam]);
 
@@ -96,15 +103,15 @@ function ProviderDemo() {
         if (!cam) return;
         setCameraErrorMessage("");
         try {
-            if (cam.isOn) {
+            if (cam.isRecording) {
                 if (isHandTracking && hands) {
                     hands.stopTracking();
                     setIsHandTracking(false);
                     setDetectedHandData(null);
                 }
-                cam.stopCamera();
+                cam.stop();
             } else {
-                cam.startCamera();
+                cam.start();
             }
         } catch (error) {
             console.error("Failed to toggle camera:", error);

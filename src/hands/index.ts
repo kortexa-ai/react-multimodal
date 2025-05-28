@@ -1,3 +1,3 @@
-export * from './types';
-export * from './hooks/useHandsControl';
-export * from './HandsProvider';
+export * from "./types";
+export * from "./hooks/useHandsTrackingDevice";
+export * from "./HandsProvider";

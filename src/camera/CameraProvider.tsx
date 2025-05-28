@@ -1,36 +1,33 @@
-import { useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, type PropsWithChildren } from 'react';
 import { CameraContext } from './context';
-import { useCamera, type UseCameraProps } from './hooks/useCamera';
-import { cameraDispatcher } from '../utils/EventDispatcher';
+import { useCameraDevice } from './hooks/useCameraDevice';
+import { cameraDispatcher } from './types';
 import type {
-    CameraContextType,
+    CameraControl,
     CameraStreamHandler,
     CameraFacingModeHandler,
     CameraErrorHandler,
     CameraLifeCycleHandler,
-    FacingMode
+    CameraFacingMode,
+    CameraProviderProps
 } from './types';
 
-export interface CameraProviderProps extends UseCameraProps {
-    children?: ReactNode;
-}
-
-export function CameraProvider({ children, ...useCameraProps }: CameraProviderProps) {
+export function CameraProvider({ children, ...useCameraProps }: PropsWithChildren<CameraProviderProps>) {
     const {
         stream,
-        isOn,
+        isRecording,
         facingMode,
         availableDevices,
         currentDeviceId,
-        startCamera: camStart,
-        stopCamera: camStop,
-        flipCamera: camFlip,
+        start: camStart,
+        stop: camStop,
+        flip: camFlip,
         setDevice: camSetDevice,
-        getCameraDevices
-    } = useCamera({
+        getDevices: getCameraDevices
+    } = useCameraDevice({
         ...useCameraProps,
-        onStreamChange: (newStream) => {
-            useCameraProps.onStreamChange?.(newStream);
+        onStream: (newStream) => {
+            useCameraProps.onStream?.(newStream);
             cameraDispatcher.dispatch('streamChanged', newStream);
         },
         onError: (error) => {
@@ -91,56 +88,56 @@ export function CameraProvider({ children, ...useCameraProps }: CameraProviderPr
 
     // Effect to dispatch facingModeChanged when it changes in useCamera hook
     useEffect(() => {
-        cameraDispatcher.dispatch('facingModeChanged', facingMode);
+        cameraDispatcher.dispatch('facingMode', facingMode);
     }, [facingMode]);
 
     // Listener management functions
-    const addStreamChangedListener = useCallback((consumerListener: CameraStreamHandler) => {
-        const id = `stream-${Date.now()}`;
-        const dispatcherListener = (data?: MediaStream | null | undefined) => {
-            consumerListener(data === undefined ? null : data);
+    const addStreamListener = useCallback((consumerListener: CameraStreamHandler) => {
+        const id = `kortexa-camera-stream-${Date.now()}`;
+        const dispatcherListener = (data?: MediaStream | undefined) => {
+            consumerListener(data);
         };
-        cameraDispatcher.addListener('streamChanged', { id, listener: dispatcherListener });
+        cameraDispatcher.addListener('stream', { id, listener: dispatcherListener });
         return id;
     }, []);
-    const removeStreamChangedListener = useCallback((id: string) => {
-        cameraDispatcher.removeListener('streamChanged', id);
+    const removeStreamListener = useCallback((id: string) => {
+        cameraDispatcher.removeListener('stream', id);
     }, []);
 
-    const addStartedListener = useCallback((listener: CameraLifeCycleHandler) => {
-        const id = `started-${Date.now()}`;
+    const addStartListener = useCallback((listener: CameraLifeCycleHandler) => {
+        const id = `kortexa-camera-started-${Date.now()}`;
         cameraDispatcher.addListener('started', { id, listener });
         return id;
     }, []);
-    const removeStartedListener = useCallback((id: string) => {
+    const removeStartListener = useCallback((id: string) => {
         cameraDispatcher.removeListener('started', id);
     }, []);
 
-    const addStoppedListener = useCallback((listener: CameraLifeCycleHandler) => {
-        const id = `stopped-${Date.now()}`;
+    const addStopListener = useCallback((listener: CameraLifeCycleHandler) => {
+        const id = `kortexa-camera-stopped-${Date.now()}`;
         cameraDispatcher.addListener('stopped', { id, listener });
         return id;
     }, []);
-    const removeStoppedListener = useCallback((id: string) => {
+    const removeStopListener = useCallback((id: string) => {
         cameraDispatcher.removeListener('stopped', id);
     }, []);
 
-    const addFacingModeChangedListener = useCallback((consumerListener: CameraFacingModeHandler) => {
-        const id = `facingMode-${Date.now()}`;
-        const dispatcherListener = (data?: FacingMode | undefined) => {
+    const addFacingModeListener = useCallback((consumerListener: CameraFacingModeHandler) => {
+        const id = `kortexa-camera-facingMode-${Date.now()}`;
+        const dispatcherListener = (data?: CameraFacingMode | undefined) => {
             if (data !== undefined) {
                 consumerListener(data);
             }
         };
-        cameraDispatcher.addListener('facingModeChanged', { id, listener: dispatcherListener });
+        cameraDispatcher.addListener('facingMode', { id, listener: dispatcherListener });
         return id;
     }, []);
-    const removeFacingModeChangedListener = useCallback((id: string) => {
-        cameraDispatcher.removeListener('facingModeChanged', id);
+    const removeFacingModeListener = useCallback((id: string) => {
+        cameraDispatcher.removeListener('facingMode', id);
     }, []);
 
     const addErrorListener = useCallback((consumerListener: CameraErrorHandler) => {
-        const id = `error-${Date.now()}`;
+        const id = `kortexa-camera-error-${Date.now()}`;
         const dispatcherListener = (data?: string | undefined) => {
             if (data !== undefined) {
                 consumerListener(data);
@@ -159,34 +156,35 @@ export function CameraProvider({ children, ...useCameraProps }: CameraProviderPr
         };
     }, []);
 
-    const contextValue = useMemo<CameraContextType>(() => ({
-        isOn,
+    const contextValue = useMemo<CameraControl>(() => ({
+        isRecording,
         stream,
         facingMode,
         availableDevices,
         currentDeviceId,
-        startCamera,
-        stopCamera,
-        toggleCamera: () => isOn ? stopCamera() : startCamera(), // Basic toggle
-        flipCamera,
+        start: startCamera,
+        stop: stopCamera,
+        toggle: () => isRecording ? stopCamera() : startCamera(),
+        flip: flipCamera,
         setDevice,
-        getCameraDevices,
-        addStreamChangedListener,
-        removeStreamChangedListener,
-        addStartedListener,
-        removeStartedListener,
-        addStoppedListener,
-        removeStoppedListener,
-        addFacingModeChangedListener,
-        removeFacingModeChangedListener,
+        getDevices: getCameraDevices,
+        addStreamListener,
+        removeStreamListener,
+        addStartListener,
+        removeStartListener,
+        addStopListener,
+        removeStopListener,
+        addFacingModeListener,
+        removeFacingModeListener,
         addErrorListener,
         removeErrorListener
     }), [
-        isOn, stream, facingMode, availableDevices, currentDeviceId,
+        isRecording, stream, facingMode, availableDevices, currentDeviceId,
         startCamera, stopCamera, flipCamera, setDevice, getCameraDevices,
-        addStreamChangedListener, removeStreamChangedListener,
-        addStartedListener, removeStartedListener, addStoppedListener, removeStoppedListener,
-        addFacingModeChangedListener, removeFacingModeChangedListener,
+        addStreamListener, removeStreamListener,
+        addStartListener, removeStartListener,
+        addStopListener, removeStopListener,
+        addFacingModeListener, removeFacingModeListener,
         addErrorListener, removeErrorListener
     ]);
 

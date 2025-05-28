@@ -1,37 +1,35 @@
-// types.ts
-import type { Context, ReactNode } from 'react';
+import { EventDispatcher } from "../utils/EventDispatcher";
 
+// Generic audio events
 export type AudioDataHandler = (data?: Float32Array) => void;
 export type AudioErrorHandler = (error?: string) => void;
+export type AudioLifeCycleHandler = () => void;
 
-export type MicrophoneMethods = {
-    isRecording: boolean;
-    start: () => void;
-    stop: () => void;
-    addListener: (listener: MicrophoneDataHandler) => string;
-    removeListener: (id: string) => void;
-};
-
-export interface MicrophoneProviderProps {
-    children: ReactNode;
-    sampleRate?: number;
-}
-
-// Types for the handlers
-export type MicrophoneDataHandler = AudioDataHandler;
+// Microphone specific events
 export type MicophoneStartHandler = () => void | Promise<void>;
 export type MicrophoneStopHandler = () => void;
+export type MicrophoneLifeCycleHandler = AudioLifeCycleHandler;
+export type MicrophoneDataHandler = AudioDataHandler;
 export type MicrophoneErrorHandler = AudioErrorHandler;
 
-export interface MicrophoneContextType {
-    // Basic controls
+export interface MicrophoneDevice {
+    isRecording: boolean;
     start: () => Promise<void>;
     stop: () => void;
-    isRecording: () => boolean;
+}
 
-    // Listeners registration
-    addAudioDataListener: (listener: MicrophoneDataHandler) => string;  // returns listener id
-    removeAudioDataListener: (id: string) => void;
+export interface MicrophoneEventMap extends Record<string, unknown> {
+    data: Float32Array;
+    start: void;
+    stop: void;
+    error: string;
+}
+
+export const microphoneDispatcher = new EventDispatcher<MicrophoneEventMap>();
+
+export interface MicrophoneControl extends MicrophoneDevice {
+    addDataListener: (listener: MicrophoneDataHandler) => string;
+    removeDataListener: (id: string) => void;
     addStartListener: (listener: MicophoneStartHandler) => string;
     removeStartListener: (id: string) => void;
     addStopListener: (listener: MicrophoneStopHandler) => string;
@@ -40,12 +38,10 @@ export interface MicrophoneContextType {
     removeErrorListener: (id: string) => void;
 }
 
-export type MicrophoneContext = Context<MicrophoneContextType>;
-
-export interface UseMicrophoneProps {
+export interface MicrophoneDeviceProps {
     sampleRate?: number;
-    // Optional: direct callbacks if not relying solely on dispatcher
-    onStarted?: () => void; 
-    onStopped?: () => void;
-    onError?: (error: string) => void;
+    onData?: MicrophoneDataHandler;
+    onError?: MicrophoneErrorHandler;
 }
+
+export type MicrophoneProviderProps = MicrophoneDeviceProps;

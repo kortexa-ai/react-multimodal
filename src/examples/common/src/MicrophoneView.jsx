@@ -75,7 +75,7 @@ function MicrophoneView({ mic }) {
         };
         animate();
 
-        const handleAudioData = (data) => {
+        const handleData = (data) => {
             const currentBar = barRef.current;
             const maxWidthInScene = maxWidthInSceneUnitsRef.current;
             if (
@@ -131,7 +131,7 @@ function MicrophoneView({ mic }) {
         };
         handleMicStoppedVisuals(); // Initial state
 
-        const audioDataListenerId = mic.addAudioDataListener(handleAudioData);
+        const audioDataListenerId = mic.addDataListener(handleData);
         const stopListenerId = mic.addStopListener(handleMicStoppedVisuals);
 
         const handleResize = () => {
@@ -154,7 +154,7 @@ function MicrophoneView({ mic }) {
 
                     maxWidthInSceneUnitsRef.current = sHeight * newAspect;
 
-                    if (!mic.isRecording()) {
+                    if (!mic.isRecording) {
                         handleMicStoppedVisuals();
                     }
                 }
@@ -164,7 +164,7 @@ function MicrophoneView({ mic }) {
         handleResize(); // Initial size check
 
         return () => {
-            mic.removeAudioDataListener(audioDataListenerId);
+            mic.removeDataListener(audioDataListenerId);
             mic.removeStopListener(stopListenerId);
 
             if (animationIdRef.current) {

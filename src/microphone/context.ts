@@ -1,5 +1,7 @@
-import { createContext } from 'react';
-import type { MicrophoneContextType } from './types';
+import { createContext } from "react";
+import type { MicrophoneControl } from "./types";
 
-export const MicrophoneContext = createContext<MicrophoneContextType>({} as MicrophoneContextType);
-MicrophoneContext.displayName = 'kortexa.ai:microphone';
+export const MicrophoneContext = createContext<MicrophoneControl | undefined>(
+    undefined
+);
+MicrophoneContext.displayName = "kortexa.ai:microphone";

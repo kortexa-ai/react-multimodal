@@ -1,40 +1,41 @@
 import type {
-    FacingMode,
-    CameraContextType as ActualCameraControlType,
+    MicrophoneControl,
+    MicrophoneDeviceProps,
+} from "../microphone/types";
+import type {
+    CameraFacingMode,
+    CameraControl,
+    CameraDeviceProps,
 } from "../camera/types";
 import type {
-    MicrophoneContextType as ActualMicrophoneControlType,
-    UseMicrophoneProps,
-} from "../microphone/types";
-import type { UseCameraProps } from "../camera/hooks/useCamera";
-import type { HandsContextType as ActualHandsControlType, UseHandsProps, HandsData } from "../hands/types";
+    HandsTrackingDeviceProps,
+    HandsTrackingControl,
+    HandsData,
+} from "../hands/types";
 
-export interface MediaState {
+export interface CompositeMediaDevice {
     isAudioActive: boolean;
     isVideoActive: boolean;
     isHandTrackingActive?: boolean;
     isMediaActive: boolean;
     audioStream: MediaStream | null;
     videoStream: MediaStream | null;
-    videoFacingMode: FacingMode | undefined;
+    videoFacingMode: CameraFacingMode | undefined;
     audioError?: string | null;
     videoError?: string | null;
     handsError?: string | null;
     mediaError?: string | null;
     currentHandsData?: HandsData | null;
-}
-
-export interface MediaControls {
     startMedia: () => Promise<void>;
     stopMedia: () => void;
     toggleMedia: () => Promise<void>;
     // Individual controls might be better handled directly on cam/mic objects
 }
 
-export interface MediaContextType extends MediaState, MediaControls {
-    cam: ActualCameraControlType | null;
-    mic: ActualMicrophoneControlType | null;
-    hands: ActualHandsControlType | null;
+export interface CompositeMediaControl extends CompositeMediaDevice {
+    cam: CameraControl | null;
+    mic: MicrophoneControl | null;
+    hands: HandsTrackingControl | null;
     setVideoElementForHands: (element: HTMLVideoElement | null) => void;
     // New properties for granular hand control
     startHands: () => Promise<void>;
@@ -43,10 +44,11 @@ export interface MediaContextType extends MediaState, MediaControls {
     isVideoElementForHandsSet: boolean;
 }
 
-export interface MediaProviderProps {
-    children?: React.ReactNode;
-    microphoneProps?: UseMicrophoneProps;
-    cameraProps?: UseCameraProps;
-    handsProps?: UseHandsProps;
+export interface CompositeMediaDeviceProps {
+    microphoneProps?: MicrophoneDeviceProps;
+    cameraProps?: CameraDeviceProps;
+    handsProps?: HandsTrackingDeviceProps;
     startBehavior?: "proceed" | "halt";
 }
+
+export type CompositeMediaProviderProps = CompositeMediaDeviceProps;

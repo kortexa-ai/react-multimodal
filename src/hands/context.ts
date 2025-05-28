@@ -1,6 +1,6 @@
 import { createContext } from "react";
-import type { HandsContextType } from "./types";
+import type { HandsContextControl } from "./types";
 
-export const HandsContext = createContext<HandsContextType>(
-    {} as HandsContextType
+export const HandsContext = createContext<HandsContextControl>(
+    {} as HandsContextControl
 );

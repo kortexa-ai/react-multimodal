@@ -1,41 +1,51 @@
-import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, type PropsWithChildren } from 'react';
 import { MicrophoneContext } from './context';
-import { useMicrophone } from './hooks/useMicrophone';
-import { microphoneDispatcher } from '../utils/EventDispatcher';
-import type { MicrophoneDataHandler } from './types';
+import { useMicrophoneDevice } from './hooks/useMicrophoneDevice';
+import { microphoneDispatcher } from './types';
+import type {
+    MicrophoneControl,
+    MicrophoneDataHandler,
+    MicrophoneDeviceProps
+} from './types';
 
-export interface MicrophoneProviderProps {
-    children?: ReactNode;
-}
-
-export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
-    const { 
-        isRecording: micIsRecording,
+export function MicrophoneProvider({ children, ...useMicrophoneProps }: PropsWithChildren<MicrophoneDeviceProps>) {
+    const {
+        isRecording,
         start: micStart,
         stop: micStop
-    } = useMicrophone();
+    } = useMicrophoneDevice({
+        ...useMicrophoneProps,
+        onData: (data) => {
+            useMicrophoneProps.onData?.(data);
+            microphoneDispatcher.dispatch('data', data);
+        },
+        onError: (error) => {
+            useMicrophoneProps.onError?.(error);
+            microphoneDispatcher.dispatch('error', error);
+        }
+    });
 
     const start = useCallback(async () => {
         try {
-            if (!micIsRecording) {
+            if (!isRecording) {
                 await micStart();
                 await microphoneDispatcher.dispatch('start');
             }
-        } catch (err) {
+        } catch (e) {
             let errorMessageText = 'Failed to start microphone';
-            if (err instanceof Error) {
-                errorMessageText += ': ' + err.message;
+            if (e instanceof Error) {
+                errorMessageText += ': ' + e.message;
             } else {
-                errorMessageText += ': ' + String(err);
+                errorMessageText += ': ' + String(e);
             }
             microphoneDispatcher.dispatch('error', errorMessageText);
-            throw err; // Re-throw the error
+            throw e;
         }
-    }, [micIsRecording, micStart]);
+    }, [isRecording, micStart]);
 
     const stop = useCallback(() => {
         try {
-            if (micIsRecording) {
+            if (isRecording) {
                 microphoneDispatcher.dispatch('stop');
                 micStop();
             }
@@ -43,24 +53,20 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
             const errorMessage = 'Failed to stop microphone';
             microphoneDispatcher.dispatch('error', errorMessage);
         }
-    }, [micIsRecording, micStop]);
+    }, [isRecording, micStop]);
 
-    const isRecording = useCallback((): boolean => {
-        return micIsRecording;
-    }, [micIsRecording]);
-
-    const addAudioDataListener = useCallback((listener: MicrophoneDataHandler) => {
-        const id = `audio-${Date.now()}`;
-        microphoneDispatcher.addListener('audioData', { id, listener });
+    const addDataListener = useCallback((listener: MicrophoneDataHandler) => {
+        const id = `kortexa-microphone-data-${Date.now()}`;
+        microphoneDispatcher.addListener('data', { id, listener });
         return id;
     }, []);
 
-    const removeAudioDataListener = useCallback((id: string) => {
-        microphoneDispatcher.removeListener('audioData', id);
+    const removeDataListener = useCallback((id: string) => {
+        microphoneDispatcher.removeListener('data', id);
     }, []);
 
     const addStartListener = useCallback((listener: () => void | Promise<void>) => {
-        const id = `start-${Date.now()}`;
+        const id = `kortexa-microphone-start-${Date.now()}`;
         microphoneDispatcher.addListener('start', { id, listener });
         return id;
     }, []);
@@ -70,7 +76,7 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
     }, []);
 
     const addStopListener = useCallback((listener: () => void) => {
-        const id = `stop-${Date.now()}`;
+        const id = `kortexa-microphone-stop-${Date.now()}`;
         microphoneDispatcher.addListener('stop', { id, listener });
         return id;
     }, []);
@@ -80,7 +86,7 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
     }, []);
 
     const addErrorListener = useCallback((listener: (error?: string) => void) => {
-        const id = `error-${Date.now()}`;
+        const id = `kortexa-microphone-error-${Date.now()}`;
         microphoneDispatcher.addListener('error', { id, listener });
         return id;
     }, []);
@@ -96,12 +102,12 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
         };
     }, []);
 
-    const value = useMemo(() => ({
+    const value = useMemo<MicrophoneControl>(() => ({
         isRecording,
         start,
         stop,
-        addAudioDataListener,
-        removeAudioDataListener,
+        addDataListener,
+        removeDataListener,
         addStartListener,
         removeStartListener,
         addStopListener,
@@ -112,8 +118,8 @@ export function MicrophoneProvider({ children }: MicrophoneProviderProps) {
         isRecording,
         start,
         stop,
-        addAudioDataListener,
-        removeAudioDataListener,
+        addDataListener,
+        removeDataListener,
         addStartListener,
         removeStartListener,
         addStopListener,

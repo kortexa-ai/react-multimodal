@@ -1,18 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { Camera, CameraOff } from "lucide-react";
-import { useCameraControl } from "../../../index";
+import { useCamera } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
-    const cam = useCameraControl();
+    const cam = useCamera();
 
-    const [isCameraOn, setIsCameraOn] = useState(cam.isOn);
+    const [isCameraOn, setIsCameraOn] = useState(cam.isRecording);
     const [errorMessage, setErrorMessage] = useState("");
     const [currentStream, setCurrentStream] = useState(null);
 
     useEffect(() => {
-        const handleStreamChange = (stream) => {
+        const handleStream = (stream) => {
             setCurrentStream(stream);
             if (stream) {
                 setIsCameraOn(true);
@@ -23,22 +23,22 @@ function ProviderDemo() {
         };
 
         const streamListenerId =
-            cam.addStreamChangedListener(handleStreamChange);
+            cam.addStreamListener(handleStream);
         if (cam.stream) {
-            handleStreamChange(cam.stream);
+            handleStream(cam.stream);
         }
 
         return () => {
-            cam.removeStreamChangedListener(streamListenerId);
+            cam.removeStreamListener(streamListenerId);
         };
     }, [cam]);
 
     useEffect(() => {
-        const handleCameraStarted = () => {
+        const handleCameraStart = () => {
             setIsCameraOn(true);
             setErrorMessage("");
         };
-        const handleCameraStopped = () => {
+        const handleCameraStop = () => {
             setIsCameraOn(false);
             setCurrentStream(null);
         };
@@ -50,31 +50,31 @@ function ProviderDemo() {
             setCurrentStream(null);
         };
 
-        const startListenerId = cam.addStartedListener(handleCameraStarted);
-        const stopListenerId = cam.addStoppedListener(handleCameraStopped);
+        const startListenerId = cam.addStartListener(handleCameraStart);
+        const stopListenerId = cam.addStopListener(handleCameraStop);
         const errorListenerId = cam.addErrorListener(handleCameraError);
 
-        setIsCameraOn(cam.isOn);
-        if (cam.isOn && cam.stream) {
+        setIsCameraOn(cam.isRecording);
+        if (cam.isRecording && cam.stream) {
             setCurrentStream(cam.stream);
         } else {
             setCurrentStream(null);
         }
 
         return () => {
-            cam.removeStartedListener(startListenerId);
-            cam.removeStoppedListener(stopListenerId);
+            cam.removeStartListener(startListenerId);
+            cam.removeStopListener(stopListenerId);
             cam.removeErrorListener(errorListenerId);
         };
     }, [cam]);
 
     const handleToggleCamera = useCallback(async () => {
         setErrorMessage("");
-        if (cam.isOn) {
-            cam.stopCamera();
+        if (cam.isRecording) {
+            cam.stop();
         } else {
             try {
-                await cam.startCamera();
+                await cam.start();
             } catch (err) {
                 setErrorMessage(err.message || "Failed to start camera.");
             }

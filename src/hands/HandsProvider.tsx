@@ -1,10 +1,10 @@
 import type { PropsWithChildren } from 'react';
-import { useHandsControl } from './hooks/useHandsControl';
+import { useHandsTrackingDevice } from './hooks/useHandsTrackingDevice';
 import type { HandsProviderProps } from './types';
 import { HandsContext } from './context';
 
 export function HandsProvider({ children, ...hookProps }: PropsWithChildren<HandsProviderProps>) {
-    const handsControl = useHandsControl(hookProps);
+    const handsControl = useHandsTrackingDevice(hookProps);
 
     return (
         <HandsContext.Provider value={handsControl}>
