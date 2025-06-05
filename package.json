@@ -45,7 +45,7 @@
         }
     },
     "scripts": {
-        "clean": "rm -rf dist dev-dist lib build coverage data server/data",
+        "clean": "rm -rf .next dist dev-dist lib build coverage .firebase data server/data",
         "clean:examples": "find src/examples -type d \\( -name 'dist' -o -name 'node_modules' \\) -exec rm -rf {} +",
         "lint": "eslint . --report-unused-disable-directives --no-error-on-unmatched-pattern",
         "lint:fix": "npm run lint -- --fix",
