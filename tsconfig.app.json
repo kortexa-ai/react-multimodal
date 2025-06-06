@@ -9,16 +9,5 @@
             "react-dom",
             "node"
         ]
-    },
-    "exclude": [
-        "./src/examples/**",
-        "./src/**/*.test.ts",
-        "./src/**/*.test.tsx",
-        "./src/**/*.test.js",
-        "./src/**/*.test.jsx",
-        "./src/**/*.spec.ts",
-        "./src/**/*.spec.tsx",
-        "./src/**/*.spec.js",
-        "./src/**/*.spec.jsx"
-    ]
+    }
 }
