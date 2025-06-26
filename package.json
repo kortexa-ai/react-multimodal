@@ -1,6 +1,6 @@
 {
     "name": "@kortexa-ai/react-multimodal",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A set of react components and hooks to help with multimodal input",
     "copyright": "Copyright © 2025 kortexa.ai",
     "author": {
@@ -60,7 +60,6 @@
         "react-dom": "^18.0.0 || ^19.0.0"
     },
     "dependencies": {
-        "@mediapipe/hands": "^0.4.1675469240",
         "@mediapipe/tasks-audio": "^0.10.22-rc.20250304",
         "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
         "lodash": "^4.17.21",

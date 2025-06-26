@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hands } from "@mediapipe/hands";
+import { HandLandmarker, GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
 import type {
     DetectedHand,
     HandLandmark,
     HandsData,
     MediaPipeHandsOptions,
-    MediaPipeHandsResults,
-    HandsTrackingDeviceProps,
+    HandsProviderProps,
     HandsTrackingControl,
+    HandLandmarkerResult,
+    GestureRecognitionResult,
 } from "../types";
 
 // Default MediaPipe Hands options
@@ -22,15 +23,19 @@ const defaultHandsOptions: MediaPipeHandsOptions = {
 
 export function useHandsTrackingDevice({
     options: userOptions,
-    handsVersion = "0.4.1675469240",
     onInitialLoad,
     onHandsData,
     onError,
     onTrackingStarted,
     onTrackingStopped,
     onResults,
-}: HandsTrackingDeviceProps = {}): HandsTrackingControl {
-    const handsRef = useRef<Hands | null>(null);
+    enableGestures = true,
+    gestureOptions,
+    gestureModelPath,
+    onGestureResults,
+}: HandsProviderProps = {}): HandsTrackingControl {
+    const handLandmarkerRef = useRef<HandLandmarker | null>(null);
+    const gestureRecognizerRef = useRef<GestureRecognizer | null>(null);
     const videoElementRef = useRef<HTMLVideoElement | null>(null);
     const animationFrameIdRef = useRef<number | null>(null);
     const isTrackingRef = useRef(false);
@@ -70,6 +75,10 @@ export function useHandsTrackingDevice({
     useEffect(() => {
         onInitialLoadRef.current = onInitialLoad;
     }, [onInitialLoad]);
+    const onGestureResultsRef = useRef(onGestureResults);
+    useEffect(() => {
+        onGestureResultsRef.current = onGestureResults;
+    }, [onGestureResults]);
 
     // Listeners for direct event subscription
     const handsDataListenersRef = useRef<
@@ -81,102 +90,138 @@ export function useHandsTrackingDevice({
     const startListenersRef = useRef<Map<string, () => void>>(new Map());
     const stopListenersRef = useRef<Map<string, () => void>>(new Map());
 
-    const processResultsFromMediaPipe = useCallback(
-        (results: MediaPipeHandsResults) => {
-            const newDetectedHands: DetectedHand[] = [];
-            if (results.multiHandLandmarks && results.multiHandedness) {
-                results.multiHandLandmarks.forEach(
-                    (landmarks: HandLandmark[], index: number) => {
-                        const handednessEntry = results.multiHandedness[index];
-                        if (landmarks && handednessEntry) {
-                            newDetectedHands.push({
-                                landmarks,
-                                worldLandmarks:
-                                    results.multiHandWorldLandmarks?.[index],
-                                handedness: [handednessEntry],
-                            });
-                        }
-                    }
+
+    const processResults = useCallback((
+        landmarkResults: HandLandmarkerResult,
+        gestureResults?: GestureRecognitionResult | undefined
+    ) => {
+        const detectedHands: DetectedHand[] = [];
+
+        if (landmarkResults.landmarks) {
+            landmarkResults.landmarks.forEach((landmarks: HandLandmark[], index: number) => {
+                const hand: DetectedHand = {
+                    landmarks: landmarks,
+                    worldLandmarks: landmarkResults.worldLandmarks?.[index] || [],
+                    handedness: landmarkResults.handedness[index][0], // Take first handedness
+                    gestures: gestureResults?.gestures[index] || [], // Add gesture results
+                };
+                detectedHands.push(hand);
+            });
+        }
+
+        const handsData: HandsData = {
+            detectedHands,
+            imageDimensions: {
+                width: videoElementRef.current?.videoWidth || 0,
+                height: videoElementRef.current?.videoHeight || 0,
+            },
+        };
+
+        setHandsData(handsData);
+        onHandsDataRef.current?.(handsData);
+        handsDataListenersRef.current.forEach(
+            (listener: (data: HandsData) => void, _key: string) =>
+                listener(handsData)
+        );
+
+        // Trigger gesture-specific callbacks
+        if (gestureResults && onGestureResultsRef.current) {
+            detectedHands.forEach((hand, index) => {
+                if (hand.gestures.length > 0) {
+                    onGestureResultsRef.current!(hand.gestures, index);
+                }
+            });
+        }
+
+        if (onResultsRef.current) {
+            try {
+                onResultsRef.current(detectedHands, videoElementRef.current || undefined);
+            } catch (error) {
+                const errorMessage =
+                    error instanceof Error ? error.message : String(error);
+                setCurrentError(errorMessage);
+                if (onErrorRef.current) onErrorRef.current(errorMessage);
+                errorListenersRef.current.forEach(
+                    (listener: (error: string) => void, _key: string) =>
+                        listener(errorMessage)
                 );
             }
+        }
 
-            const newHandsData: HandsData = {
-                detectedHands: newDetectedHands,
-                imageDimensions: results.image
-                    ? {
-                          width: results.image.width,
-                          height: results.image.height,
-                      }
-                    : undefined,
-            };
-
-            setHandsData(newHandsData);
-            if (onHandsDataRef.current) onHandsDataRef.current(newHandsData);
-            handsDataListenersRef.current.forEach(
-                (listener: (data: HandsData) => void, _key: string) =>
-                    listener(newHandsData)
-            );
-
-            if (onResultsRef.current) {
-                try {
-                    onResultsRef.current(newDetectedHands, results.image);
-                } catch (error) {
-                    const errorMessage =
-                        error instanceof Error ? error.message : String(error);
-                    setCurrentError(errorMessage);
-                    if (onErrorRef.current) onErrorRef.current(errorMessage);
-                    errorListenersRef.current.forEach(
-                        (listener: (error: string) => void, _key: string) =>
-                            listener(errorMessage)
-                    );
-                }
-            }
-
-            if (
-                !initialLoadCompleteRef.current &&
-                newDetectedHands.length > 0
-            ) {
-                initialLoadCompleteRef.current = true;
-                if (onInitialLoadRef.current) onInitialLoadRef.current();
-            }
-        },
-        [
-            setHandsData,
-            setCurrentError,
-            onHandsDataRef,
-            onResultsRef,
-            onInitialLoadRef,
-            onErrorRef,
-            handsDataListenersRef,
-            initialLoadCompleteRef,
-        ]
-    );
+        if (!initialLoadCompleteRef.current && detectedHands.length > 0) {
+            initialLoadCompleteRef.current = true;
+            if (onInitialLoadRef.current) onInitialLoadRef.current();
+        }
+    }, [
+        setHandsData,
+        setCurrentError,
+        onHandsDataRef,
+        onResultsRef,
+        onInitialLoadRef,
+        onErrorRef,
+        onGestureResultsRef,
+        handsDataListenersRef,
+        errorListenersRef,
+        initialLoadCompleteRef,
+        videoElementRef,
+    ]);
 
     useEffect(() => {
-        const handsInstance = new Hands({
-            locateFile: (file) =>
-                `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${handsVersion}/${file}`,
-        });
+        const initializeModels = async () => {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+                );
 
-        handsInstance.setOptions(options);
-        handsInstance.onResults(processResultsFromMediaPipe);
-
-        handsRef.current = handsInstance;
-
-        return () => {
-            if (handsRef.current) {
-                handsRef.current.close().catch((err) => {
-                    setCurrentError(
-                        err instanceof Error ? err.message : String(err)
-                    );
+                // Initialize hand landmarker
+                const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                        delegate: "GPU",
+                    },
+                    runningMode: "VIDEO",
+                    numHands: options.maxNumHands || 2,
+                    minHandDetectionConfidence: options.minDetectionConfidence || 0.5,
+                    minHandPresenceConfidence: 0.5,
+                    minTrackingConfidence: options.minTrackingConfidence || 0.5,
                 });
-                handsRef.current = null;
+
+                // Initialize gesture recognizer (if enabled)
+                let gestureRecognizer = null;
+                if (enableGestures) {
+                    gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
+                        baseOptions: {
+                            modelAssetPath: gestureModelPath || `https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task`,
+                            delegate: "GPU",
+                        },
+                        runningMode: "VIDEO",
+                        numHands: gestureOptions?.numHands || 2,
+                        minHandDetectionConfidence: gestureOptions?.minHandDetectionConfidence || 0.5,
+                        minHandPresenceConfidence: gestureOptions?.minHandPresenceConfidence || 0.5,
+                        minTrackingConfidence: gestureOptions?.minTrackingConfidence || 0.5,
+                    });
+                }
+
+                handLandmarkerRef.current = handLandmarker;
+                gestureRecognizerRef.current = gestureRecognizer;
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                setCurrentError(errorMessage);
+                if (onErrorRef.current) onErrorRef.current(errorMessage);
             }
         };
-    }, [options, handsVersion, processResultsFromMediaPipe]);
+
+        initializeModels();
+
+        return () => {
+            // Cleanup will be handled when models support close() method
+            handLandmarkerRef.current = null;
+            gestureRecognizerRef.current = null;
+        };
+    }, [options, enableGestures, gestureOptions, gestureModelPath, onErrorRef]);
 
     const sendFrame = useCallback(async () => {
-        if (!videoElementRef.current || !handsRef.current) {
+        if (!videoElementRef.current || !handLandmarkerRef.current) {
             return;
         }
 
@@ -191,8 +236,26 @@ export function useHandsTrackingDevice({
             return;
         }
 
+        const timestamp = performance.now();
+
         try {
-            await handsRef.current.send({ image: videoElementRef.current });
+            // Get hand landmarks
+            const landmarkResults = handLandmarkerRef.current.detectForVideo(
+                videoElementRef.current,
+                timestamp
+            );
+
+            // Get gesture recognition (if enabled)
+            let gestureResults: GestureRecognitionResult | undefined;
+            if (gestureRecognizerRef.current) {
+                gestureResults = gestureRecognizerRef.current.recognizeForVideo(
+                    videoElementRef.current,
+                    timestamp
+                );
+            }
+
+            // Process combined results
+            processResults(landmarkResults, gestureResults);
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
@@ -208,22 +271,24 @@ export function useHandsTrackingDevice({
             animationFrameIdRef.current = requestAnimationFrame(sendFrame);
         }
     }, [
-        handsRef,
+        handLandmarkerRef,
+        gestureRecognizerRef,
         videoElementRef,
         setCurrentError,
         onErrorRef,
         errorListenersRef,
+        processResults,
     ]);
 
     const startTracking = useCallback(
         async (videoElement: HTMLVideoElement) => {
-            if (!handsRef.current) {
-                setCurrentError("Hands instance not initialized.");
+            if (!handLandmarkerRef.current) {
+                setCurrentError("HandLandmarker not initialized.");
                 if (onErrorRef.current)
-                    onErrorRef.current("Hands instance not initialized.");
+                    onErrorRef.current("HandLandmarker not initialized.");
                 errorListenersRef.current.forEach(
                     (listener: (error: string) => void, _key: string) =>
-                        listener("Hands instance not initialized.")
+                        listener("HandLandmarker not initialized.")
                 );
                 return;
             }
@@ -278,7 +343,8 @@ export function useHandsTrackingDevice({
         error: currentError,
         startTracking,
         stopTracking,
-        getHandsInstance: () => handsRef.current,
+        getHandLandmarker: () => handLandmarkerRef.current,
+        getGestureRecognizer: () => gestureRecognizerRef.current,
         addHandsDataListener: (listener: (data: HandsData) => void) => {
             const id = Date.now().toString() + Math.random().toString();
             handsDataListenersRef.current.set(id, listener);

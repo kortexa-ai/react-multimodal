@@ -1,22 +1,25 @@
-import type { Hands } from "@mediapipe/hands";
+import type { 
+    HandLandmarker, 
+    GestureRecognizer, 
+    Category, 
+    GestureRecognizerResult,
+    HandLandmarkerResult as MPHandLandmarkerResult,
+    NormalizedLandmark,
+    Landmark
+} from "@mediapipe/tasks-vision";
 
-export interface HandLandmark {
-    x: number;
-    y: number;
-    z: number;
-    visibility?: number; // Optional, as visibility might not always be present or used
-}
-
-export interface Handedness {
-    score: number;
-    index: number; // Typically 0 for Left, 1 for Right if two hands, but depends on MediaPipe output
-    label: "Left" | "Right" | string; // string for flexibility if more labels are possible
-}
+// Use MediaPipe's types directly
+export type HandLandmark = NormalizedLandmark;
+export type Handedness = Category;
+export type GestureResult = Category;
+export type GestureRecognitionResult = GestureRecognizerResult;
+export type HandLandmarkerResult = MPHandLandmarkerResult;
 
 export interface DetectedHand {
     landmarks: HandLandmark[];
-    worldLandmarks?: HandLandmark[]; // Optional, if requested and available
-    handedness: Handedness[]; // MediaPipe returns an array, usually with one item
+    worldLandmarks?: Landmark[]; // Use Landmark for world coordinates
+    handedness: Handedness; // Single handedness value for each hand
+    gestures: GestureResult[]; // Built-in gesture recognition
 }
 
 // This will be the structure of the results from MediaPipe's onResults callback
@@ -70,7 +73,8 @@ export interface HandsTrackingDevice {
     error: string | null;
     startTracking: (videoElement: HTMLVideoElement) => Promise<void>;
     stopTracking: () => void;
-    getHandsInstance: () => Hands | null; // To get the raw MediaPipe Hands instance if needed
+    getHandLandmarker?: () => HandLandmarker | null; // NEW: For tasks-vision API
+    getGestureRecognizer?: () => GestureRecognizer | null; // NEW: For gesture recognition
 }
 
 export interface HandsTrackingControl extends HandsTrackingDevice {
@@ -85,4 +89,15 @@ export interface HandsTrackingControl extends HandsTrackingDevice {
     removeStopListener: (listenerId: string) => void;
 }
 
-export type HandsProviderProps = HandsTrackingDeviceProps;
+export interface HandsProviderProps extends HandsTrackingDeviceProps {
+    // New gesture-specific props
+    enableGestures?: boolean; // Default: true
+    gestureOptions?: {
+        numHands?: number;
+        minHandDetectionConfidence?: number;
+        minHandPresenceConfidence?: number;
+        minTrackingConfidence?: number;
+    };
+    gestureModelPath?: string; // Custom model path if needed
+    onGestureResults?: (gestures: GestureResult[], handIndex: number) => void;
+}
