@@ -27,6 +27,18 @@ All notable changes to this project will be documented in this file.
 - Type compatibility issues with MediaPipe Tasks Vision API
 - Build errors related to type mismatches
 
+## [0.2.0] - 2025-07-27
+
+### Added
+- Support for body tracking using MediaPipe Tasks Vision
+- Support for face tracking using MediaPipe Tasks Vision
+
+### Changed
+- Updated the CompositeMediaProvider interfaces to support body and face tracking
+
+### Fixed
+- Tracking data and camera orientation in examples
+
 ## [0.1.3] - 2025-05-27
 
 ### Changed
