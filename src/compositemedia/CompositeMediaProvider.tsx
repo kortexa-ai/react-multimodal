@@ -34,6 +34,12 @@ import { useCamera } from '../camera/hooks/useCamera';
 import { HandsProvider } from '../hands/HandsProvider';
 import { useHandsTracking } from '../hands/hooks/useHandsTracking';
 
+import { BodyProvider } from '../body/BodyProvider';
+import { useBodyTrackingDevice } from '../body/hooks/useBodyTrackingDevice';
+
+import { FaceProvider } from '../face/FaceProvider';
+import { useFaceTrackingDevice } from '../face/hooks/useFaceTrackingDevice';
+
 import type { CompositeMediaProviderProps, CompositeMediaControl } from './types';
 import { CompositeMediaContext } from './context';
 
@@ -50,22 +56,39 @@ function InternalMediaOrchestrator({
     const mic = useMicrophone();
     const cam = useCamera();
     const hands = useHandsTracking();
+    const body = useBodyTrackingDevice();
+    const face = useFaceTrackingDevice();
 
     const videoElementForHandsInternalRef = useRef<HTMLVideoElement | null>(null);
-    // Flag to track if we've already tried to start hands in the current "camera on" cycle.
-    // This helps prevent repeated attempts if the video element becomes available later or conditions change.
+    const videoElementForBodyInternalRef = useRef<HTMLVideoElement | null>(null);
+    const videoElementForFaceInternalRef = useRef<HTMLVideoElement | null>(null);
+    
+    // Flags to track if we've already tried to start tracking in the current "camera on" cycle.
     const [attemptedHandsStartInCycle, setAttemptedHandsStartInCycle] = useState(false);
-    // Flag to track if the user has explicitly stopped hands, to prevent auto-restart by useEffect.
+    const [attemptedBodyStartInCycle, setAttemptedBodyStartInCycle] = useState(false);
+    const [attemptedFaceStartInCycle, setAttemptedFaceStartInCycle] = useState(false);
+    
+    // Flags to track if the user has explicitly stopped tracking, to prevent auto-restart by useEffect.
     const [userExplicitlyStoppedHands, setUserExplicitlyStoppedHands] = useState(false);
+    const [userExplicitlyStoppedBody, setUserExplicitlyStoppedBody] = useState(false);
+    const [userExplicitlyStoppedFace, setUserExplicitlyStoppedFace] = useState(false);
 
     const [mediaOrchestrationError, setMediaOrchestrationError] = useState<string | undefined>(undefined);
     const [isStarting, setIsStarting] = useState(false); // True if startMedia is in progress
     const [currentAudioError, setCurrentAudioError] = useState<string | undefined>(undefined);
     const [currentVideoError, setCurrentVideoError] = useState<string | undefined>(undefined);
     const [currentHandsError, setCurrentHandsError] = useState<string | undefined>(undefined);
-    // True if startHands or startHandsAsyncInternal is in progress for explicit hands start requests.
+    const [currentBodyError, setCurrentBodyError] = useState<string | undefined>(undefined);
+    const [currentFaceError, setCurrentFaceError] = useState<string | undefined>(undefined);
+    
+    // True if explicit start requests are in progress
     const [isStartingHandsInternal, setIsStartingHandsInternal] = useState(false);
+    const [isStartingBodyInternal, setIsStartingBodyInternal] = useState(false);
+    const [isStartingFaceInternal, setIsStartingFaceInternal] = useState(false);
+    
     const [isVideoElementForHandsSet, setIsVideoElementForHandsSet] = useState(false);
+    const [isVideoElementForBodySet, setIsVideoElementForBodySet] = useState(false);
+    const [isVideoElementForFaceSet, setIsVideoElementForFaceSet] = useState(false);
 
     // Effect to listen for microphone errors
     useEffect(() => {
@@ -102,10 +125,40 @@ function InternalMediaOrchestrator({
         return () => { }; // No-op if hands is null
     }, [hands]);
 
+    // Effect to listen for body errors
+    useEffect(() => {
+        if (body) {
+            const errorListenerId = body.addErrorListener((err) => {
+                setCurrentBodyError(err);
+                setIsStartingBodyInternal(false);
+            });
+            return () => {
+                body.removeErrorListener(errorListenerId);
+            };
+        }
+        return () => { }; // No-op if body is null
+    }, [body]);
+
+    // Effect to listen for face errors
+    useEffect(() => {
+        if (face) {
+            const errorListenerId = face.addErrorListener((err) => {
+                setCurrentFaceError(err);
+                setIsStartingFaceInternal(false);
+            });
+            return () => {
+                face.removeErrorListener(errorListenerId);
+            };
+        }
+        return () => { }; // No-op if face is null
+    }, [face]);
+
     const isAudioActive = useMemo(() => mic.isRecording, [mic]);
     const isVideoActive = useMemo(() => cam.isRecording, [cam]);
-    // Use hands.isTracking directly from the hook for the most up-to-date status.
+    // Use direct tracking states from the hooks for the most up-to-date status.
     const isHandTrackingActive = useMemo(() => hands?.isTracking ?? false, [hands]);
+    const isBodyTrackingActive = useMemo(() => body?.isTracking ?? false, [body]);
+    const isFaceTrackingActive = useMemo(() => face?.isTracking ?? false, [face]);
     const isMediaActive = useMemo(() => isAudioActive && isVideoActive, [isAudioActive, isVideoActive]);
 
     // These are derived states, not primary input sources for the context, so can be null or actual streams.
@@ -113,18 +166,37 @@ function InternalMediaOrchestrator({
     const videoStream = useMemo(() => cam.stream ?? undefined, [cam]);
     const videoFacingMode = useMemo(() => cam.facingMode, [cam]);
     const currentHandsData = useMemo(() => hands?.handsData ?? undefined, [hands]);
+    const currentBodyData = useMemo(() => body?.bodyData ?? undefined, [body]);
+    const currentFaceData = useMemo(() => face?.faceData ?? undefined, [face]);
 
     const setVideoElementForHands = useCallback((element: HTMLVideoElement | null) => {
         videoElementForHandsInternalRef.current = element;
         if (!element) {
-            // If video element is removed (e.g., CameraView unmounts or stream stops),
-            // reset the flag so that if it's added again, we can attempt to start hands.
             setAttemptedHandsStartInCycle(false);
             setIsVideoElementForHandsSet(false);
         } else {
             setIsVideoElementForHandsSet(true);
         }
-        // No automatic hands start here; that's handled by useEffect or startHands/startMedia.
+    }, []);
+
+    const setVideoElementForBody = useCallback((element: HTMLVideoElement | null) => {
+        videoElementForBodyInternalRef.current = element;
+        if (!element) {
+            setAttemptedBodyStartInCycle(false);
+            setIsVideoElementForBodySet(false);
+        } else {
+            setIsVideoElementForBodySet(true);
+        }
+    }, []);
+
+    const setVideoElementForFace = useCallback((element: HTMLVideoElement | null) => {
+        videoElementForFaceInternalRef.current = element;
+        if (!element) {
+            setAttemptedFaceStartInCycle(false);
+            setIsVideoElementForFaceSet(false);
+        } else {
+            setIsVideoElementForFaceSet(true);
+        }
     }, []);
 
     /**
@@ -172,6 +244,92 @@ function InternalMediaOrchestrator({
             throw err;
         }
     }, [hands, cam, setCurrentHandsError, setAttemptedHandsStartInCycle]);
+
+    /**
+     * Internal function to start body tracking.
+     */
+    const startBodyAsyncInternal = useCallback(async () => {
+        if (!body || !videoElementForBodyInternalRef.current || !cam?.isRecording || !cam?.stream) {
+            const errorMsg = "Pre-conditions not met for starting body tracking (body, videoElement, camera state).";
+            setCurrentBodyError(errorMsg);
+            setAttemptedBodyStartInCycle(true);
+            return Promise.reject(new Error(errorMsg));
+        }
+        if (body.isTracking) {
+            return Promise.resolve();
+        }
+
+        const videoEl = videoElementForBodyInternalRef.current;
+        setAttemptedBodyStartInCycle(true);
+        setCurrentBodyError(undefined);
+
+        try {
+            if (videoEl.readyState < HTMLMediaElement.HAVE_METADATA) {
+                await new Promise<void>((resolve, reject) => {
+                    const onLoadedMetadata = () => {
+                        videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        videoEl.removeEventListener('error', onError);
+                        resolve();
+                    };
+                    const onError = (_e: Event | string) => {
+                        videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        videoEl.removeEventListener('error', onError);
+                        reject(new Error('Video element error during metadata load for body tracking.'));
+                    };
+                    videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
+                    videoEl.addEventListener('error', onError);
+                });
+            }
+            await body.startTracking(videoEl);
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setCurrentBodyError(errorMsg);
+            throw err;
+        }
+    }, [body, cam, setCurrentBodyError, setAttemptedBodyStartInCycle]);
+
+    /**
+     * Internal function to start face tracking.
+     */
+    const startFaceAsyncInternal = useCallback(async () => {
+        if (!face || !videoElementForFaceInternalRef.current || !cam?.isRecording || !cam?.stream) {
+            const errorMsg = "Pre-conditions not met for starting face tracking (face, videoElement, camera state).";
+            setCurrentFaceError(errorMsg);
+            setAttemptedFaceStartInCycle(true);
+            return Promise.reject(new Error(errorMsg));
+        }
+        if (face.isTracking) {
+            return Promise.resolve();
+        }
+
+        const videoEl = videoElementForFaceInternalRef.current;
+        setAttemptedFaceStartInCycle(true);
+        setCurrentFaceError(undefined);
+
+        try {
+            if (videoEl.readyState < HTMLMediaElement.HAVE_METADATA) {
+                await new Promise<void>((resolve, reject) => {
+                    const onLoadedMetadata = () => {
+                        videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        videoEl.removeEventListener('error', onError);
+                        resolve();
+                    };
+                    const onError = (_e: Event | string) => {
+                        videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        videoEl.removeEventListener('error', onError);
+                        reject(new Error('Video element error during metadata load for face tracking.'));
+                    };
+                    videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
+                    videoEl.addEventListener('error', onError);
+                });
+            }
+            await face.startTracking(videoEl);
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setCurrentFaceError(errorMsg);
+            throw err;
+        }
+    }, [face, cam, setCurrentFaceError, setAttemptedFaceStartInCycle]);
 
     /**
      * Orchestrates the start of all media: microphone, camera, and potentially hands.
@@ -235,28 +393,53 @@ function InternalMediaOrchestrator({
             }
         }
 
-        // If camera started (or was already on) and other conditions are met, try starting hands.
-        // This part is crucial. It relies on attemptedHandsStartInCycle being false initially for this startMedia call.
-        if (localCamAttemptOk && cam?.isRecording && cam.stream && hands && !hands.isTracking && videoElementForHandsInternalRef.current && !attemptedHandsStartInCycle) {
-            try {
-                await startHandsAsyncInternal();
-            } catch {
-                if (startBehavior === 'halt') {
-                    // If hands fail and behavior is 'halt', this implies a severe issue or desire to stop all media.
-                    // However, mic and cam might already be running. The definition of 'halt' for hands is tricky here.
-                    // For now, we just log and the error is set. The user might expect media to stop if hands are critical.
-                    // This part might need refinement based on desired UX for 'halt' with hands.
-                    setMediaOrchestrationError(`Failed to start hand tracking. Halting media start. Error: ${currentHandsError || 'Unknown hands error'}`);
+        // If camera started (or was already on) and other conditions are met, try starting tracking.
+        if (localCamAttemptOk && cam?.isRecording && cam.stream) {
+            // Try starting hands
+            if (hands && !hands.isTracking && videoElementForHandsInternalRef.current && !attemptedHandsStartInCycle) {
+                try {
+                    await startHandsAsyncInternal();
+                } catch {
+                    if (startBehavior === 'halt') {
+                        setMediaOrchestrationError(`Failed to start hand tracking. Halting media start. Error: ${currentHandsError || 'Unknown hands error'}`);
+                    }
+                }
+            }
+            
+            // Try starting body
+            if (body && !body.isTracking && videoElementForBodyInternalRef.current && !attemptedBodyStartInCycle) {
+                try {
+                    await startBodyAsyncInternal();
+                } catch {
+                    if (startBehavior === 'halt') {
+                        setMediaOrchestrationError(`Failed to start body tracking. Halting media start. Error: ${currentBodyError || 'Unknown body error'}`);
+                    }
+                }
+            }
+            
+            // Try starting face
+            if (face && !face.isTracking && videoElementForFaceInternalRef.current && !attemptedFaceStartInCycle) {
+                try {
+                    await startFaceAsyncInternal();
+                } catch {
+                    if (startBehavior === 'halt') {
+                        setMediaOrchestrationError(`Failed to start face tracking. Halting media start. Error: ${currentFaceError || 'Unknown face error'}`);
+                    }
                 }
             }
         }
 
         setIsStarting(false);
     }, [
-        mic, cam, hands, startBehavior, isAudioActive, isVideoActive, isStarting,
-        videoElementForHandsInternalRef, attemptedHandsStartInCycle, startHandsAsyncInternal,
-        currentAudioError, currentVideoError, currentHandsError,
-        setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setMediaOrchestrationError, setIsStarting, setAttemptedHandsStartInCycle, setUserExplicitlyStoppedHands // Added setters for completeness though some might be stable
+        mic, cam, hands, body, face, startBehavior, isAudioActive, isVideoActive, isStarting,
+        videoElementForHandsInternalRef, videoElementForBodyInternalRef, videoElementForFaceInternalRef,
+        attemptedHandsStartInCycle, attemptedBodyStartInCycle, attemptedFaceStartInCycle,
+        startHandsAsyncInternal, startBodyAsyncInternal, startFaceAsyncInternal,
+        currentAudioError, currentVideoError, currentHandsError, currentBodyError, currentFaceError,
+        setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setCurrentBodyError, setCurrentFaceError,
+        setMediaOrchestrationError, setIsStarting, 
+        setAttemptedHandsStartInCycle, setAttemptedBodyStartInCycle, setAttemptedFaceStartInCycle,
+        setUserExplicitlyStoppedHands, setUserExplicitlyStoppedBody, setUserExplicitlyStoppedFace
     ]);
 
     /**
@@ -270,17 +453,34 @@ function InternalMediaOrchestrator({
                 // attemptedHandsStartInCycle is set to true by startHandsAsyncInternal regardless of outcome.
             });
         }
-    }, [cam?.isRecording, cam?.stream, hands, videoElementForHandsInternalRef, attemptedHandsStartInCycle, userExplicitlyStoppedHands, startHandsAsyncInternal]); // Ensure all dependencies are listed
+    }, [cam?.isRecording, cam?.stream, hands, videoElementForHandsInternalRef, attemptedHandsStartInCycle, userExplicitlyStoppedHands, startHandsAsyncInternal]);
+
+    // Auto-start body tracking when dependencies are ready
+    useEffect(() => {
+        if (cam?.isRecording && cam.stream && body && !body.isTracking && videoElementForBodyInternalRef.current && !attemptedBodyStartInCycle && !userExplicitlyStoppedBody) {
+            startBodyAsyncInternal().catch(() => {
+                // Error handled within startBodyAsyncInternal
+            });
+        }
+    }, [cam?.isRecording, cam?.stream, body, videoElementForBodyInternalRef, attemptedBodyStartInCycle, userExplicitlyStoppedBody, startBodyAsyncInternal]);
+
+    // Auto-start face tracking when dependencies are ready
+    useEffect(() => {
+        if (cam?.isRecording && cam.stream && face && !face.isTracking && videoElementForFaceInternalRef.current && !attemptedFaceStartInCycle && !userExplicitlyStoppedFace) {
+            startFaceAsyncInternal().catch(() => {
+                // Error handled within startFaceAsyncInternal
+            });
+        }
+    }, [cam?.isRecording, cam?.stream, face, videoElementForFaceInternalRef, attemptedFaceStartInCycle, userExplicitlyStoppedFace, startFaceAsyncInternal]);
 
     useEffect(() => {
         if (!cam?.isRecording) {
-            // If camera turns off, any "attempt" in the current "cycle" related to hands auto-start is void.
-            // This ensures that if the camera turns back on, a new attempt to start hands can be made.
-            // startMedia() also resets this, but this handles cases where startMedia() might not be the immediate trigger
-            // or for general state cleanliness regarding this flag.
+            // Reset all attempt flags when camera turns off
             setAttemptedHandsStartInCycle(false);
+            setAttemptedBodyStartInCycle(false);
+            setAttemptedFaceStartInCycle(false);
         }
-    }, [cam?.isRecording, setAttemptedHandsStartInCycle]);
+    }, [cam?.isRecording, setAttemptedHandsStartInCycle, setAttemptedBodyStartInCycle, setAttemptedFaceStartInCycle]);
 
     /**
      * Stops hand tracking. This is a direct command to stop hands.
@@ -304,20 +504,62 @@ function InternalMediaOrchestrator({
     }, [hands, setCurrentHandsError, setAttemptedHandsStartInCycle]);
 
     /**
-     * Effect to automatically stop hand tracking if the camera is turned off.
+     * Stops body tracking.
+     */
+    const stopBody = useCallback(async () => {
+        if (body && body.isTracking) {
+            try {
+                await body.stopTracking();
+                setUserExplicitlyStoppedBody(true);
+            } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                setCurrentBodyError(errorMsg);
+            }
+        }
+        setAttemptedBodyStartInCycle(false);
+        setIsStartingBodyInternal(false);
+    }, [body, setCurrentBodyError, setAttemptedBodyStartInCycle]);
+
+    /**
+     * Stops face tracking.
+     */
+    const stopFace = useCallback(async () => {
+        if (face && face.isTracking) {
+            try {
+                await face.stopTracking();
+                setUserExplicitlyStoppedFace(true);
+            } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                setCurrentFaceError(errorMsg);
+            }
+        }
+        setAttemptedFaceStartInCycle(false);
+        setIsStartingFaceInternal(false);
+    }, [face, setCurrentFaceError, setAttemptedFaceStartInCycle]);
+
+    /**
+     * Effect to automatically stop all tracking if the camera is turned off.
      */
     useEffect(() => {
         if (cam && !cam.isRecording) {
             if (hands?.isTracking) {
                 stopHands();
             }
-            // When camera turns off, reset the flag, so if it turns on again, hands can try to start.
+            if (body?.isTracking) {
+                stopBody();
+            }
+            if (face?.isTracking) {
+                stopFace();
+            }
+            // When camera turns off, reset all flags
             setAttemptedHandsStartInCycle(false);
+            setAttemptedBodyStartInCycle(false);
+            setAttemptedFaceStartInCycle(false);
         }
-    }, [cam, cam?.isRecording, hands, stopHands]); // cam.isOn is the primary trigger here
+    }, [cam, cam?.isRecording, hands, body, face, stopHands, stopBody, stopFace]);
 
     /**
-     * Stops all media: microphone, camera, and implicitly hands (due to camera stopping).
+     * Stops all media: microphone, camera, and implicitly all tracking (due to camera stopping).
      */
     const stopMedia = useCallback(() => {
         if (mic?.isRecording) {
@@ -330,8 +572,10 @@ function InternalMediaOrchestrator({
         setCurrentAudioError(undefined);
         setCurrentVideoError(undefined);
         setCurrentHandsError(undefined);
-        setIsStarting(false); // Ensure isStarting is false if stopMedia is called during a start sequence.
-    }, [mic, cam, setMediaOrchestrationError, setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setIsStarting]);
+        setCurrentBodyError(undefined);
+        setCurrentFaceError(undefined);
+        setIsStarting(false);
+    }, [mic, cam, setMediaOrchestrationError, setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setCurrentBodyError, setCurrentFaceError, setIsStarting]);
 
     /**
      * Toggles all media on or off.
@@ -387,20 +631,108 @@ function InternalMediaOrchestrator({
         }
     }, [hands, cam?.isRecording, videoElementForHandsInternalRef, isStartingHandsInternal, startHandsAsyncInternal, setIsStartingHandsInternal, setCurrentHandsError]);
 
+    /**
+     * Explicitly starts body tracking.
+     */
+    const startBody = useCallback(async () => {
+        if (isStartingBodyInternal || body?.isTracking) {
+            return;
+        }
+
+        setUserExplicitlyStoppedBody(false);
+        setIsStartingBodyInternal(true);
+        setCurrentBodyError(undefined);
+
+        if (!body) {
+            const errorMsg = "Body tracking service not available.";
+            setCurrentBodyError(errorMsg);
+            setIsStartingBodyInternal(false);
+            return;
+        }
+        if (!cam?.isRecording) {
+            const errorMsg = "Camera is not active. Cannot start body tracking.";
+            setCurrentBodyError(errorMsg);
+            setIsStartingBodyInternal(false);
+            return;
+        }
+        if (!videoElementForBodyInternalRef.current) {
+            const errorMsg = "Video element not set for body tracking.";
+            setCurrentBodyError(errorMsg);
+            setIsStartingBodyInternal(false);
+            setIsVideoElementForBodySet(false);
+            return;
+        }
+
+        try {
+            await startBodyAsyncInternal();
+        } catch {
+            // Error is set by startBodyAsyncInternal
+        } finally {
+            setIsStartingBodyInternal(false);
+        }
+    }, [body, cam?.isRecording, videoElementForBodyInternalRef, isStartingBodyInternal, startBodyAsyncInternal, setIsStartingBodyInternal, setCurrentBodyError]);
+
+    /**
+     * Explicitly starts face tracking.
+     */
+    const startFace = useCallback(async () => {
+        if (isStartingFaceInternal || face?.isTracking) {
+            return;
+        }
+
+        setUserExplicitlyStoppedFace(false);
+        setIsStartingFaceInternal(true);
+        setCurrentFaceError(undefined);
+
+        if (!face) {
+            const errorMsg = "Face tracking service not available.";
+            setCurrentFaceError(errorMsg);
+            setIsStartingFaceInternal(false);
+            return;
+        }
+        if (!cam?.isRecording) {
+            const errorMsg = "Camera is not active. Cannot start face tracking.";
+            setCurrentFaceError(errorMsg);
+            setIsStartingFaceInternal(false);
+            return;
+        }
+        if (!videoElementForFaceInternalRef.current) {
+            const errorMsg = "Video element not set for face tracking.";
+            setCurrentFaceError(errorMsg);
+            setIsStartingFaceInternal(false);
+            setIsVideoElementForFaceSet(false);
+            return;
+        }
+
+        try {
+            await startFaceAsyncInternal();
+        } catch {
+            // Error is set by startFaceAsyncInternal
+        } finally {
+            setIsStartingFaceInternal(false);
+        }
+    }, [face, cam?.isRecording, videoElementForFaceInternalRef, isStartingFaceInternal, startFaceAsyncInternal, setIsStartingFaceInternal, setCurrentFaceError]);
+
     // Context value provided to children
     const contextValue = useMemo<CompositeMediaControl>(() => {
         return {
             isAudioActive,
             isVideoActive,
             isHandTrackingActive,
+            isBodyTrackingActive,
+            isFaceTrackingActive,
             isMediaActive,
             audioStream,
             videoStream,
             videoFacingMode,
             currentHandsData,
+            currentBodyData,
+            currentFaceData,
             audioError: currentAudioError,
             videoError: currentVideoError,
             handsError: currentHandsError,
+            bodyError: currentBodyError,
+            faceError: currentFaceError,
             mediaError: mediaOrchestrationError,
             startMedia,
             stopMedia,
@@ -408,20 +740,35 @@ function InternalMediaOrchestrator({
             cam,
             mic,
             hands,
+            body,
+            face,
             setVideoElementForHands,
+            setVideoElementForBody,
+            setVideoElementForFace,
             startHands,
             stopHands,
+            startBody,
+            stopBody,
+            startFace,
+            stopFace,
             isStartingMedia: isStarting,
             isStartingHands: isStartingHandsInternal,
+            isStartingBody: isStartingBodyInternal,
+            isStartingFace: isStartingFaceInternal,
             isVideoElementForHandsSet,
+            isVideoElementForBodySet,
+            isVideoElementForFaceSet,
         }
     }, [
-        isAudioActive, isVideoActive, isHandTrackingActive, isMediaActive,
-        audioStream, videoStream, videoFacingMode, currentHandsData,
-        currentAudioError, currentVideoError, currentHandsError, mediaOrchestrationError,
+        isAudioActive, isVideoActive, isHandTrackingActive, isBodyTrackingActive, isFaceTrackingActive, isMediaActive,
+        audioStream, videoStream, videoFacingMode, currentHandsData, currentBodyData, currentFaceData,
+        currentAudioError, currentVideoError, currentHandsError, currentBodyError, currentFaceError, mediaOrchestrationError,
         startMedia, stopMedia, toggleMedia,
-        cam, mic, hands, setVideoElementForHands,
-        startHands, stopHands, isStarting, isStartingHandsInternal, isVideoElementForHandsSet
+        cam, mic, hands, body, face,
+        setVideoElementForHands, setVideoElementForBody, setVideoElementForFace,
+        startHands, stopHands, startBody, stopBody, startFace, stopFace,
+        isStarting, isStartingHandsInternal, isStartingBodyInternal, isStartingFaceInternal,
+        isVideoElementForHandsSet, isVideoElementForBodySet, isVideoElementForFaceSet
     ]);
 
     return (
@@ -436,17 +783,23 @@ export function CompositeMediaProvider({
     microphoneProps,
     cameraProps,
     handsProps,
+    bodyProps,
+    faceProps,
     startBehavior = DEFAULT_START_BEHAVIOR,
 }: PropsWithChildren<CompositeMediaProviderProps>) {
     return (
         <MicrophoneProvider {...microphoneProps}>
             <CameraProvider {...cameraProps}>
                 <HandsProvider {...handsProps}>
-                    <InternalMediaOrchestrator
-                        startBehavior={startBehavior}
-                    >
-                        {children}
-                    </InternalMediaOrchestrator>
+                    <BodyProvider {...bodyProps}>
+                        <FaceProvider {...faceProps}>
+                            <InternalMediaOrchestrator
+                                startBehavior={startBehavior}
+                            >
+                                {children}
+                            </InternalMediaOrchestrator>
+                        </FaceProvider>
+                    </BodyProvider>
                 </HandsProvider>
             </CameraProvider>
         </MicrophoneProvider>

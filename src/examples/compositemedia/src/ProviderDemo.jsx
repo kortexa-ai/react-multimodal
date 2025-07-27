@@ -41,6 +41,10 @@ import {
     Square,
     Hand,
     HandMetal,
+    User,
+    UserCheck,
+    Smile,
+    SmilePlus,
 } from "lucide-react";
 import { useCompositeMedia } from "../../../index";
 import MicrophoneView from "../../common/src/MicrophoneView";
@@ -50,16 +54,24 @@ import StatusDot from "../../common/src/StatusDot";
 function ProviderDemo() {
     const media = useCompositeMedia();
 
-    // Extract setVideoElementForHands to stabilize the callback's dependency
+    // Extract setVideoElement functions to stabilize the callback's dependencies
     const setVideoElementForHands = media?.setVideoElementForHands;
+    const setVideoElementForBody = media?.setVideoElementForBody;
+    const setVideoElementForFace = media?.setVideoElementForFace;
 
     const handleVideoElementReady = useCallback(
         (element) => {
             if (setVideoElementForHands) {
                 setVideoElementForHands(element);
             }
+            if (setVideoElementForBody) {
+                setVideoElementForBody(element);
+            }
+            if (setVideoElementForFace) {
+                setVideoElementForFace(element);
+            }
         },
-        [setVideoElementForHands]
+        [setVideoElementForHands, setVideoElementForBody, setVideoElementForFace]
     );
 
     const handleToggleCamera = useCallback(async () => {
@@ -118,6 +130,34 @@ function ProviderDemo() {
         }
     }, [media]);
 
+    const handleToggleBody = useCallback(async () => {
+        if (!media.body) return;
+        if (media.isBodyTrackingActive) {
+            media.stopBody();
+        } else {
+            try {
+                await media.startBody();
+            } catch (err) {
+                // Error should be displayed via media.bodyError
+                console.error("[MediaDemo] Error toggling body tracking:", err);
+            }
+        }
+    }, [media]);
+
+    const handleToggleFace = useCallback(async () => {
+        if (!media.face) return;
+        if (media.isFaceTrackingActive) {
+            media.stopFace();
+        } else {
+            try {
+                await media.startFace();
+            } catch (err) {
+                // Error should be displayed via media.faceError
+                console.error("[MediaDemo] Error toggling face tracking:", err);
+            }
+        }
+    }, [media]);
+
     if (!media) {
         return (
             <div className="card-container">
@@ -132,13 +172,60 @@ function ProviderDemo() {
         <div className="card-container">
             <h2 className="card-title">Composite Media Provider Demo</h2>
 
-            <div className="camera-view-container">
+            <div className="camera-view-container" style={{ position: 'relative' }}>
                 <CameraView
                     stream={media.videoStream}
                     onVideoElementReady={handleVideoElementReady}
                     handsData={media.currentHandsData}
+                    faceData={media.currentFaceData}
+                    bodyData={media.currentBodyData}
                     showHands={media.isHandTrackingActive}
+                    showFaces={media.isFaceTrackingActive}
+                    showBodies={media.isBodyTrackingActive}
                 />
+                {/* Multi-tracking indicators */}
+                <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    left: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                }}>
+                    {media.isHandTrackingActive && media.currentHandsData && (
+                        <div style={{
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            fontSize: '12px'
+                        }}>
+                            ✋ Hands: {media.currentHandsData.detectedHands?.length || 0}
+                        </div>
+                    )}
+                    {media.isFaceTrackingActive && media.currentFaceData && (
+                        <div style={{
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            fontSize: '12px'
+                        }}>
+                            👤 Faces: {media.currentFaceData.detectedFaces?.length || 0}
+                        </div>
+                    )}
+                    {media.isBodyTrackingActive && media.currentBodyData && (
+                        <div style={{
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            fontSize: '12px'
+                        }}>
+                            🚶 Bodies: {media.currentBodyData.detectedBodies?.length || 0}
+                        </div>
+                    )}
+                </div>
             </div>
             {media.videoError && (
                 <p className="error-message">
@@ -150,6 +237,12 @@ function ProviderDemo() {
             )}
             {media.handsError && (
                 <p className="error-message">Hands Error: {media.handsError}</p>
+            )}
+            {media.bodyError && (
+                <p className="error-message">Body Error: {media.bodyError}</p>
+            )}
+            {media.faceError && (
+                <p className="error-message">Face Error: {media.faceError}</p>
             )}
             {media.mediaError && (
                 <p className="error-message">Media Error: {media.mediaError}</p>
@@ -164,7 +257,9 @@ function ProviderDemo() {
                         !media ||
                         (media.isAudioActive &&
                             media.isVideoActive &&
-                            media.isHandTrackingActive)
+                            media.isHandTrackingActive &&
+                            media.isBodyTrackingActive &&
+                            media.isFaceTrackingActive)
                     }
                     title="Start All Media"
                 >
@@ -176,7 +271,9 @@ function ProviderDemo() {
                         !media ||
                         (!media.isAudioActive &&
                             !media.isVideoActive &&
-                            !media.isHandTrackingActive)
+                            !media.isHandTrackingActive &&
+                            !media.isBodyTrackingActive &&
+                            !media.isFaceTrackingActive)
                     }
                     title="Stop All Media"
                 >
@@ -229,6 +326,50 @@ function ProviderDemo() {
                 </button>
                 {media.hands && (
                     <StatusDot isActive={media.isHandTrackingActive} />
+                )}
+
+                <span className="control-separator"></span>
+                {/* Body tracking toggle button */}
+                <button
+                    onClick={handleToggleBody}
+                    disabled={
+                        !media.body ||
+                        !media.isVideoActive ||
+                        !media.isVideoElementForBodySet ||
+                        media.isStartingBody
+                    }
+                    title={
+                        media.isBodyTrackingActive
+                            ? "Stop Body Tracking"
+                            : "Start Body Tracking"
+                    }
+                >
+                    {media.isBodyTrackingActive ? <UserCheck /> : <User />}
+                </button>
+                {media.body && (
+                    <StatusDot isActive={media.isBodyTrackingActive} />
+                )}
+
+                <span className="control-separator"></span>
+                {/* Face tracking toggle button */}
+                <button
+                    onClick={handleToggleFace}
+                    disabled={
+                        !media.face ||
+                        !media.isVideoActive ||
+                        !media.isVideoElementForFaceSet ||
+                        media.isStartingFace
+                    }
+                    title={
+                        media.isFaceTrackingActive
+                            ? "Stop Face Tracking"
+                            : "Start Face Tracking"
+                    }
+                >
+                    {media.isFaceTrackingActive ? <SmilePlus /> : <Smile />}
+                </button>
+                {media.face && (
+                    <StatusDot isActive={media.isFaceTrackingActive} />
                 )}
             </div>
         </div>

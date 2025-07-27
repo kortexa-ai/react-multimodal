@@ -10,6 +10,8 @@ function App() {
                 // initialFacingMode: 'user' // This could also be here if needed
             }}
             // microphoneProps={{ autoStart: false }}
+            // bodyProps={{}} // Optional body tracking configuration
+            // faceProps={{}} // Optional face tracking configuration
         >
             <ProviderDemo />
         </CompositeMediaProvider>

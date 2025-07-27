@@ -1,21 +1,21 @@
 import { useEffect, useState, useCallback } from "react";
-import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
-import { useCamera, useHandsControl } from "../../../index";
+import { Smile, SmilePlus, Video, VideoOff } from "lucide-react";
+import { useCamera, useFaceControl } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
     const cam = useCamera();
-    const hands = useHandsControl();
+    const face = useFaceControl();
 
     const [isCameraOn, setIsCameraOn] = useState(cam?.isRecording || false);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
     const [currentStream, setCurrentStream] = useState(null);
-    const [videoElementForHands, setVideoElementForHands] = useState(null);
+    const [videoElementForFace, setVideoElementForFace] = useState(null);
 
-    const [isHandTracking, setIsHandTracking] = useState(false);
-    const [handsErrorMessage, setHandsErrorMessage] = useState("");
-    const [detectedHandData, setDetectedHandData] = useState(null);
+    const [isFaceTracking, setIsFaceTracking] = useState(false);
+    const [faceErrorMessage, setFaceErrorMessage] = useState("");
+    const [detectedFaceData, setDetectedFaceData] = useState(null);
 
     useEffect(() => {
         const handleStream = (stream) => {
@@ -42,7 +42,7 @@ function ProviderDemo() {
         if (!cam) return;
 
         const handleCamError = (error) => {
-            console.error("Camera Error in Hands Demo:", error);
+            console.error("Camera Error in Face Demo:", error);
             setCameraErrorMessage(
                 typeof error === "string"
                     ? error
@@ -76,38 +76,39 @@ function ProviderDemo() {
     }, [cam]);
 
     useEffect(() => {
-        if (!hands) return;
+        if (!face) return;
 
         const handleData = (data) => {
-            setDetectedHandData(data);
-            setIsHandTracking(true);
-            setHandsErrorMessage("");
+            console.log("Face data received:", data);
+            setDetectedFaceData(data);
+            setIsFaceTracking(true);
+            setFaceErrorMessage("");
         };
 
         const handleError = (error) => {
-            console.error("Hands error in demo:", error);
-            setHandsErrorMessage(error.message || "Hand tracking error");
-            setIsHandTracking(false);
+            console.error("Face error in demo:", error);
+            setFaceErrorMessage(error.message || "Face tracking error");
+            setIsFaceTracking(false);
         };
 
-        const dataId = hands.addHandsDataListener(handleData);
-        const errorId = hands.addErrorListener(handleError);
+        const dataId = face.addFaceDataListener(handleData);
+        const errorId = face.addErrorListener(handleError);
 
         return () => {
-            hands.removeHandsDataListener(dataId);
-            hands.removeErrorListener(errorId);
+            face.removeFaceDataListener(dataId);
+            face.removeErrorListener(errorId);
         };
-    }, [hands]);
+    }, [face]);
 
     const handleToggleCamera = useCallback(async () => {
         if (!cam) return;
         setCameraErrorMessage("");
         try {
             if (cam.isRecording) {
-                if (isHandTracking && hands) {
-                    hands.stopTracking();
-                    setIsHandTracking(false);
-                    setDetectedHandData(null);
+                if (isFaceTracking && face) {
+                    face.stopTracking();
+                    setIsFaceTracking(false);
+                    setDetectedFaceData(null);
                 }
                 cam.stop();
             } else {
@@ -117,78 +118,97 @@ function ProviderDemo() {
             console.error("Failed to toggle camera:", error);
             setCameraErrorMessage(error.message || "Failed to toggle camera");
         }
-    }, [cam, hands, isHandTracking]);
+    }, [cam, face, isFaceTracking]);
 
-    const handleToggleHandTracking = useCallback(async () => {
-        setHandsErrorMessage("");
-        if (!hands) {
-            setHandsErrorMessage("Hands provider not available.");
+    const handleToggleFaceTracking = useCallback(async () => {
+        setFaceErrorMessage("");
+        if (!face) {
+            setFaceErrorMessage("Face provider not available.");
             return;
         }
 
-        if (isHandTracking) {
-            hands.stopTracking();
-            setIsHandTracking(false);
-            setDetectedHandData(null);
+        if (isFaceTracking) {
+            face.stopTracking();
+            setIsFaceTracking(false);
+            setDetectedFaceData(null);
         } else {
             if (!isCameraOn) {
-                setHandsErrorMessage(
-                    "Camera must be on to start hand tracking."
+                setFaceErrorMessage(
+                    "Camera must be on to start face tracking."
                 );
                 return;
             }
-            if (!videoElementForHands) {
-                setHandsErrorMessage(
-                    "Video element not yet available for hand tracking."
+            if (!videoElementForFace) {
+                setFaceErrorMessage(
+                    "Video element not yet available for face tracking."
                 );
                 return;
             }
             if (
-                !videoElementForHands.srcObject ||
-                !videoElementForHands.srcObject.active
+                !videoElementForFace.srcObject ||
+                !videoElementForFace.srcObject.active
             ) {
-                setHandsErrorMessage(
+                setFaceErrorMessage(
                     "Video element does not have an active stream."
                 );
                 return;
             }
             try {
-                hands.startTracking(videoElementForHands);
-                // If startTracking itself doesn't set isHandTracking,
+                face.startTracking(videoElementForFace);
+                // If startTracking itself doesn't set isFaceTracking,
                 // we might optimistically set it here,
                 // but let's wait for data/error events first as per current design.
             } catch (error) {
                 console.error(
-                    "Error directly from hands.startTracking call:",
+                    "Error directly from face.startTracking call:",
                     error
                 );
-                setHandsErrorMessage(
-                    error.message || "Failed to start hand tracking."
+                setFaceErrorMessage(
+                    error.message || "Failed to start face tracking."
                 );
-                setIsHandTracking(false); // Ensure it's false if start failed
+                setIsFaceTracking(false); // Ensure it's false if start failed
             }
         }
-    }, [isCameraOn, videoElementForHands, hands, isHandTracking]);
+    }, [isCameraOn, videoElementForFace, face, isFaceTracking]);
 
     return (
         <div className="card-container">
-            <h2 className="card-title">Hands Provider Demo</h2>
-            <div className="camera-view-container">
+            <h2 className="card-title">Face Provider Demo</h2>
+            <div className="camera-view-container" style={{ position: 'relative' }}>
                 <CameraView
                     stream={currentStream}
-                    onVideoElementReady={setVideoElementForHands}
-                    handsData={detectedHandData}
-                    showHands={true}
+                    onVideoElementReady={setVideoElementForFace}
+                    faceData={detectedFaceData}
+                    showFaces={true}
                 />
+                {isFaceTracking && detectedFaceData && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                    }}>
+                        👤 Faces Detected: {detectedFaceData.detectedFaces?.length || 0}
+                        {detectedFaceData.detectedFaces?.[0]?.blendshapes && (
+                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                                Expressions: {detectedFaceData.detectedFaces[0].blendshapes.length} detected
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             {cameraErrorMessage && (
                 <p className="error-message">
                     Camera Error: {cameraErrorMessage}
                 </p>
             )}
-            {handsErrorMessage && (
+            {faceErrorMessage && (
                 <p className="error-message">
-                    Hands Error: {handsErrorMessage}
+                    Face Error: {faceErrorMessage}
                 </p>
             )}
             <div className="button-row">
@@ -203,17 +223,17 @@ function ProviderDemo() {
                 <span className="control-separator"></span>
 
                 <button
-                    onClick={handleToggleHandTracking}
+                    onClick={handleToggleFaceTracking}
                     disabled={!isCameraOn}
                     title={
-                        isHandTracking
-                            ? "Stop Hand Tracking"
-                            : "Start Hand Tracking"
+                        isFaceTracking
+                            ? "Stop Face Tracking"
+                            : "Start Face Tracking"
                     }
                 >
-                    {isHandTracking ? <HandMetal /> : <Hand />}
+                    {isFaceTracking ? <SmilePlus /> : <Smile />}
                 </button>
-                <StatusDot isActive={isHandTracking} />
+                <StatusDot isActive={isFaceTracking} />
             </div>
         </div>
     );

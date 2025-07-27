@@ -17,6 +17,101 @@ const HAND_CONNECTIONS = [
     [5, 9], [9, 13], [13, 17], [17, 5]
 ];
 
+// MediaPipe Body Pose Connections (33 landmarks)
+const BODY_CONNECTIONS = [
+    // Face
+    [0, 1], [1, 2], [2, 3], [3, 7],
+    [0, 4], [4, 5], [5, 6], [6, 8],
+    [9, 10],
+    
+    // Torso
+    [11, 12], [11, 13], [12, 14], [13, 15], [14, 16],
+    [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
+    [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32],
+    
+    // Arms
+    [15, 17], [16, 18], [17, 19], [18, 20], [19, 21], [20, 22],
+    [15, 21], [16, 22]
+];
+
+// MediaPipe Face Landmark Connections (key facial features)
+const FACE_CONNECTIONS = [
+    // Face outline
+    [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], [389, 356], [356, 454], [454, 323], [323, 361], [361, 288],
+    [288, 397], [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152], [152, 148], [148, 176], [176, 149], [149, 150],
+    [150, 136], [136, 172], [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], [162, 21], [21, 54], [54, 103],
+    [103, 67], [67, 109], [109, 10],
+    
+    // Left eye
+    [33, 7], [7, 163], [163, 144], [144, 145], [145, 153], [153, 154], [154, 155], [155, 133], [133, 173], [173, 157], [157, 158],
+    [158, 159], [159, 160], [160, 161], [161, 246], [246, 33],
+    
+    // Right eye  
+    [362, 382], [382, 381], [381, 380], [380, 374], [374, 373], [373, 390], [390, 249], [249, 263], [263, 466], [466, 388], [388, 387],
+    [387, 386], [386, 385], [385, 384], [384, 398], [398, 362],
+    
+    // Nose
+    [19, 94], [94, 125], [125, 141], [141, 235], [235, 31], [31, 228], [228, 229], [229, 230], [230, 231], [231, 232], [232, 233],
+    [233, 244], [244, 245], [245, 122], [122, 6], [6, 202], [202, 214], [214, 234], [234, 19],
+    
+    // Mouth outer
+    [61, 84], [84, 17], [17, 314], [314, 405], [405, 320], [320, 307], [307, 375], [375, 321], [321, 308], [308, 324], [324, 318],
+    [318, 402], [402, 317], [317, 14], [14, 87], [87, 178], [178, 88], [88, 95], [95, 78], [78, 61],
+    
+    // Mouth inner
+    [78, 95], [95, 88], [88, 178], [178, 87], [87, 14], [14, 317], [317, 402], [402, 318], [318, 324], [324, 308], [308, 415],
+    [415, 310], [310, 311], [311, 312], [312, 13], [13, 82], [82, 81], [81, 80], [80, 78]
+];
+
+// Key body landmarks for highlighting (MediaPipe Pose 33 landmarks)
+const BODY_KEYPOINTS = {
+    // Face
+    nose: 0,
+    leftEyeInner: 1, leftEye: 2, leftEyeOuter: 3,
+    rightEyeInner: 4, rightEye: 5, rightEyeOuter: 6,
+    leftEar: 7, rightEar: 8,
+    mouthLeft: 9, mouthRight: 10,
+    
+    // Upper body
+    leftShoulder: 11, rightShoulder: 12,
+    leftElbow: 13, rightElbow: 14,
+    leftWrist: 15, rightWrist: 16,
+    
+    // Hands
+    leftPinky: 17, rightPinky: 18,
+    leftIndex: 19, rightIndex: 20,
+    leftThumb: 21, rightThumb: 22,
+    
+    // Lower body
+    leftHip: 23, rightHip: 24,
+    leftKnee: 25, rightKnee: 26,
+    leftAnkle: 27, rightAnkle: 28,
+    leftHeel: 29, rightHeel: 30,
+    leftFootIndex: 31, rightFootIndex: 32
+};
+
+// Key face landmarks for highlighting
+const FACE_KEYPOINTS = {
+    // Eyes
+    leftEyeCenter: 468, // Iris center (if available) or use 133 for left eye center
+    rightEyeCenter: 473, // Iris center (if available) or use 362 for right eye center
+    leftEyeCorners: [33, 133], // Left eye inner and outer corners
+    rightEyeCorners: [362, 263], // Right eye inner and outer corners
+    
+    // Nose
+    noseTip: 1,
+    noseBase: [19, 94],
+    
+    // Mouth
+    mouthCorners: [61, 291],
+    mouthCenter: [13, 14],
+    
+    // Face outline key points
+    chinTip: 152,
+    foreheadCenter: 9,
+    cheeks: [116, 345]
+};
+
 // Colors for connections, corresponding to HAND_CONNECTIONS order
 const CONNECTION_COLORS = [
     // Thumb (4 connections)
@@ -41,10 +136,44 @@ const FINGERTIP_COLORS = {
     16: 'yellow',   // Ring finger tip
     20: 'fuchsia'   // Pinky tip
 };
+
+// Body-specific colors
+const BODY_CONNECTION_COLOR = 'orange';
+const BODY_LANDMARK_COLOR = 'red';
+const BODY_KEYPOINT_COLORS = {
+    face: 'yellow',
+    upperBody: 'lime',
+    hands: 'cyan',
+    lowerBody: 'magenta'
+};
+
+// Face-specific colors
+const FACE_CONNECTION_COLOR = 'cyan';
+const FACE_LANDMARK_COLOR = 'yellow';
+const FACE_KEYPOINT_COLORS = {
+    eyes: 'lime',
+    nose: 'orange',
+    mouth: 'red',
+    outline: 'cyan'
+};
+const FACE_BOUNDING_BOX_COLOR = 'magenta';
+
 const LANDMARK_RADIUS = 5;
 const LINE_WIDTH = 3;
 
-function CameraView({ stream, onVideoElementReady, handsData, showHands = true }) {
+// Helper function to adjust coordinates for mirror mode
+const adjustCoordinateForMirror = (x, mirrorMode) => {
+    return mirrorMode ? 1 - x : x;
+};
+
+// Helper function to check if camera is in mirror mode
+export const isCameraMirrored = (cameraViewElement) => {
+    // Check if the video plane has negative scale.x (mirror mode)
+    const canvas = cameraViewElement?.querySelector('canvas');
+    return canvas?.style.transform?.includes('scaleX(-1)') || false;
+};
+
+function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData, showHands = true, showFaces = true, showBodies = true, mirrorMode = true, onMirrorModeChange }) {
     const mountRef = useRef(null);
     const videoElementRef = useRef(null);
     const rendererRef = useRef(null); // To store renderer instance for cleanup
@@ -60,6 +189,13 @@ function CameraView({ stream, onVideoElementReady, handsData, showHands = true }
     const [overlayWidth, setOverlayWidth] = useState(0);
     const [overlayHeight, setOverlayHeight] = useState(0);
     const prevStream = useRef(stream); // For tracking stream changes
+
+    // Notify parent component of mirror mode
+    useEffect(() => {
+        if (onMirrorModeChange) {
+            onMirrorModeChange(mirrorMode);
+        }
+    }, [mirrorMode, onMirrorModeChange]);
 
     useEffect(() => {
         prevStream.current = stream;
@@ -166,7 +302,7 @@ function CameraView({ stream, onVideoElementReady, handsData, showHands = true }
                 texture.needsUpdate = true; // Important for texture changes
                 // --- End of new "cover" logic ---
 
-                videoPlaneRef.current.scale.x = -1; // Mirror the video plane for a true mirror effect
+                videoPlaneRef.current.scale.x = mirrorMode ? -1 : 1; // Mirror the video plane based on mirrorMode prop
 
                 if (cameraRef.current)
                     cameraRef.current.lookAt(newVideoPlane.position);
@@ -409,7 +545,7 @@ function CameraView({ stream, onVideoElementReady, handsData, showHands = true }
         };
     }, []); // Runs once on mount
 
-    // Effect for drawing hand landmarks
+    // Effect for drawing hand and face landmarks
     useEffect(() => {
         const canvas = overlayCanvasRef.current;
         if (!canvas) return;
@@ -421,48 +557,202 @@ function CameraView({ stream, onVideoElementReady, handsData, showHands = true }
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, overlayWidth, overlayHeight); // Clear previous drawings
 
-        if (!showHands || !handsData || !handsData.detectedHands || overlayWidth === 0 || overlayHeight === 0) {
-            return; // No data, canvas not ready, or showHands is false
+        if (overlayWidth === 0 || overlayHeight === 0) {
+            return; // Canvas not ready
         }
 
-        handsData.detectedHands.forEach(hand => {
-            if (hand.landmarks) {
-                // Draw connections first
-                HAND_CONNECTIONS.forEach((connection, index) => {
-                    const [startIdx, endIdx] = connection;
-                    const startLandmark = hand.landmarks[startIdx];
-                    const endLandmark = hand.landmarks[endIdx];
+        // Draw hands if enabled and data available
+        if (showHands && handsData && handsData.detectedHands) {
+            handsData.detectedHands.forEach(hand => {
+                if (hand.landmarks) {
+                    // Draw connections first
+                    HAND_CONNECTIONS.forEach((connection, index) => {
+                        const [startIdx, endIdx] = connection;
+                        const startLandmark = hand.landmarks[startIdx];
+                        const endLandmark = hand.landmarks[endIdx];
 
-                    if (startLandmark && endLandmark) {
-                        const startX = startLandmark.x * overlayWidth;
-                        const startY = startLandmark.y * overlayHeight;
-                        const endX = endLandmark.x * overlayWidth;
-                        const endY = endLandmark.y * overlayHeight;
+                        if (startLandmark && endLandmark) {
+                            const startX = adjustCoordinateForMirror(startLandmark.x, mirrorMode) * overlayWidth;
+                            const startY = startLandmark.y * overlayHeight;
+                            const endX = adjustCoordinateForMirror(endLandmark.x, mirrorMode) * overlayWidth;
+                            const endY = endLandmark.y * overlayHeight;
+
+                            ctx.beginPath();
+                            ctx.moveTo(startX, startY);
+                            ctx.lineTo(endX, endY);
+                            ctx.strokeStyle = CONNECTION_COLORS[index] || 'white';
+                            ctx.lineWidth = LINE_WIDTH;
+                            ctx.stroke();
+                        }
+                    });
+
+                    // Draw landmarks on top of connections
+                    hand.landmarks.forEach((landmark, index) => {
+                        const x = adjustCoordinateForMirror(landmark.x, mirrorMode) * overlayWidth;
+                        const y = landmark.y * overlayHeight;
+                        const color = FINGERTIP_COLORS[index] || LANDMARK_COLOR;
 
                         ctx.beginPath();
-                        ctx.moveTo(startX, startY);
-                        ctx.lineTo(endX, endY);
-                        ctx.strokeStyle = CONNECTION_COLORS[index] || 'white'; // Default to white if color not found
+                        ctx.arc(x, y, LANDMARK_RADIUS, 0, 2 * Math.PI);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                    });
+                }
+            });
+        }
+
+        // Draw bodies if enabled and data available
+        if (showBodies && bodyData && bodyData.detectedBodies) {
+            bodyData.detectedBodies.forEach(body => {
+                if (body.landmarks) {
+                    // Draw body connections first
+                    BODY_CONNECTIONS.forEach(connection => {
+                        const [startIdx, endIdx] = connection;
+                        const startLandmark = body.landmarks[startIdx];
+                        const endLandmark = body.landmarks[endIdx];
+
+                        if (startLandmark && endLandmark) {
+                            const startX = adjustCoordinateForMirror(startLandmark.x, mirrorMode) * overlayWidth;
+                            const startY = startLandmark.y * overlayHeight;
+                            const endX = adjustCoordinateForMirror(endLandmark.x, mirrorMode) * overlayWidth;
+                            const endY = endLandmark.y * overlayHeight;
+
+                            ctx.beginPath();
+                            ctx.moveTo(startX, startY);
+                            ctx.lineTo(endX, endY);
+                            ctx.strokeStyle = BODY_CONNECTION_COLOR;
+                            ctx.lineWidth = LINE_WIDTH;
+                            ctx.stroke();
+                        }
+                    });
+
+                    // Draw key body landmarks with special colors
+                    const drawBodyKeypoints = (keypoints, color) => {
+                        keypoints.forEach(idx => {
+                            if (body.landmarks[idx]) {
+                                const x = adjustCoordinateForMirror(body.landmarks[idx].x, mirrorMode) * overlayWidth;
+                                const y = body.landmarks[idx].y * overlayHeight;
+                                ctx.beginPath();
+                                ctx.arc(x, y, LANDMARK_RADIUS + 2, 0, 2 * Math.PI);
+                                ctx.fillStyle = color;
+                                ctx.fill();
+                                // Add border for better visibility
+                                ctx.beginPath();
+                                ctx.arc(x, y, LANDMARK_RADIUS + 2, 0, 2 * Math.PI);
+                                ctx.strokeStyle = 'white';
+                                ctx.lineWidth = 1;
+                                ctx.stroke();
+                            }
+                        });
+                    };
+
+                    // Draw different body parts with different colors
+                    // Face keypoints
+                    drawBodyKeypoints([
+                        BODY_KEYPOINTS.nose, BODY_KEYPOINTS.leftEye, BODY_KEYPOINTS.rightEye,
+                        BODY_KEYPOINTS.leftEar, BODY_KEYPOINTS.rightEar
+                    ], BODY_KEYPOINT_COLORS.face);
+
+                    // Upper body keypoints
+                    drawBodyKeypoints([
+                        BODY_KEYPOINTS.leftShoulder, BODY_KEYPOINTS.rightShoulder,
+                        BODY_KEYPOINTS.leftElbow, BODY_KEYPOINTS.rightElbow,
+                        BODY_KEYPOINTS.leftWrist, BODY_KEYPOINTS.rightWrist
+                    ], BODY_KEYPOINT_COLORS.upperBody);
+
+                    // Hand keypoints
+                    drawBodyKeypoints([
+                        BODY_KEYPOINTS.leftPinky, BODY_KEYPOINTS.rightPinky,
+                        BODY_KEYPOINTS.leftIndex, BODY_KEYPOINTS.rightIndex,
+                        BODY_KEYPOINTS.leftThumb, BODY_KEYPOINTS.rightThumb
+                    ], BODY_KEYPOINT_COLORS.hands);
+
+                    // Lower body keypoints
+                    drawBodyKeypoints([
+                        BODY_KEYPOINTS.leftHip, BODY_KEYPOINTS.rightHip,
+                        BODY_KEYPOINTS.leftKnee, BODY_KEYPOINTS.rightKnee,
+                        BODY_KEYPOINTS.leftAnkle, BODY_KEYPOINTS.rightAnkle,
+                        BODY_KEYPOINTS.leftHeel, BODY_KEYPOINTS.rightHeel,
+                        BODY_KEYPOINTS.leftFootIndex, BODY_KEYPOINTS.rightFootIndex
+                    ], BODY_KEYPOINT_COLORS.lowerBody);
+                }
+            });
+        }
+
+        // Draw faces if enabled and data available
+        if (showFaces && faceData && faceData.detectedFaces) {
+            faceData.detectedFaces.forEach(face => {
+                if (face.landmarks) {
+                    // Draw face bounding box if available
+                    if (face.boundingBox) {
+                        const { xMin, yMin, width, height } = face.boundingBox;
+                        const x = mirrorMode ? (1 - (xMin + width)) * overlayWidth : xMin * overlayWidth;
+                        const y = yMin * overlayHeight;
+                        const w = width * overlayWidth;
+                        const h = height * overlayHeight;
+
+                        ctx.beginPath();
+                        ctx.rect(x, y, w, h);
+                        ctx.strokeStyle = FACE_BOUNDING_BOX_COLOR;
                         ctx.lineWidth = LINE_WIDTH;
                         ctx.stroke();
                     }
-                });
 
-                // Draw landmarks on top of connections
-                hand.landmarks.forEach((landmark, index) => {
-                    const x = landmark.x * overlayWidth;
-                    const y = landmark.y * overlayHeight;
-                    const color = FINGERTIP_COLORS[index] || LANDMARK_COLOR;
+                    // Draw face connections
+                    FACE_CONNECTIONS.forEach(connection => {
+                        const [startIdx, endIdx] = connection;
+                        const startLandmark = face.landmarks[startIdx];
+                        const endLandmark = face.landmarks[endIdx];
 
-                    ctx.beginPath();
-                    ctx.arc(x, y, LANDMARK_RADIUS, 0, 2 * Math.PI);
-                    ctx.fillStyle = color;
-                    ctx.fill();
-                });
-            }
-        });
+                        if (startLandmark && endLandmark) {
+                            const startX = adjustCoordinateForMirror(startLandmark.x, mirrorMode) * overlayWidth;
+                            const startY = startLandmark.y * overlayHeight;
+                            const endX = adjustCoordinateForMirror(endLandmark.x, mirrorMode) * overlayWidth;
+                            const endY = endLandmark.y * overlayHeight;
 
-    }, [handsData, overlayWidth, overlayHeight, showHands]);
+                            ctx.beginPath();
+                            ctx.moveTo(startX, startY);
+                            ctx.lineTo(endX, endY);
+                            ctx.strokeStyle = FACE_CONNECTION_COLOR;
+                            ctx.lineWidth = 1; // Thinner lines for face
+                            ctx.stroke();
+                        }
+                    });
+
+                    // Draw key face landmarks with special colors
+                    const drawKeypoints = (indices, color) => {
+                        if (Array.isArray(indices)) {
+                            indices.forEach(idx => {
+                                if (face.landmarks[idx]) {
+                                    const x = adjustCoordinateForMirror(face.landmarks[idx].x, mirrorMode) * overlayWidth;
+                                    const y = face.landmarks[idx].y * overlayHeight;
+                                    ctx.beginPath();
+                                    ctx.arc(x, y, LANDMARK_RADIUS + 1, 0, 2 * Math.PI);
+                                    ctx.fillStyle = color;
+                                    ctx.fill();
+                                }
+                            });
+                        } else if (face.landmarks[indices]) {
+                            const x = adjustCoordinateForMirror(face.landmarks[indices].x, mirrorMode) * overlayWidth;
+                            const y = face.landmarks[indices].y * overlayHeight;
+                            ctx.beginPath();
+                            ctx.arc(x, y, LANDMARK_RADIUS + 1, 0, 2 * Math.PI);
+                            ctx.fillStyle = color;
+                            ctx.fill();
+                        }
+                    };
+
+                    // Draw key facial features
+                    drawKeypoints(FACE_KEYPOINTS.leftEyeCorners, FACE_KEYPOINT_COLORS.eyes);
+                    drawKeypoints(FACE_KEYPOINTS.rightEyeCorners, FACE_KEYPOINT_COLORS.eyes);
+                    drawKeypoints(FACE_KEYPOINTS.noseTip, FACE_KEYPOINT_COLORS.nose);
+                    drawKeypoints(FACE_KEYPOINTS.mouthCorners, FACE_KEYPOINT_COLORS.mouth);
+                    drawKeypoints(FACE_KEYPOINTS.mouthCenter, FACE_KEYPOINT_COLORS.mouth);
+                }
+            });
+        }
+
+    }, [handsData, faceData, bodyData, overlayWidth, overlayHeight, showHands, showFaces, showBodies, mirrorMode]);
 
     // The div that Three.js will render into.
     // Its class for styling (e.g., camera-view-container) should be applied by the parent component.

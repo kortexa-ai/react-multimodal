@@ -46,3 +46,33 @@ export type {
 export { useHandsTracking as useHands } from "./hands/hooks/useHandsTracking";
 export { useHandsTrackingDevice as useHandsControl } from "./hands/hooks/useHandsTrackingDevice";
 export { HandsProvider } from "./hands/HandsProvider";
+
+// Body - Provider, Hook & Core Types
+export type {
+    BodyTrackingDeviceProps,
+    BodyTrackingDevice,
+    BodyTrackingControl,
+    BodyData,
+    DetectedBody,
+    BodyLandmark,
+    MediaPipeBodyOptions,
+    MediaPipeBodyResults,
+    BodyProviderProps,
+} from "./body/types";
+export { useBodyTrackingDevice as useBodyControl } from "./body/hooks/useBodyTrackingDevice";
+export { BodyProvider } from "./body/BodyProvider";
+
+// Face - Provider, Hook & Core Types
+export type {
+    FaceTrackingDeviceProps,
+    FaceTrackingDevice,
+    FaceTrackingControl,
+    FaceData,
+    DetectedFace,
+    FaceLandmark,
+    MediaPipeFaceOptions,
+    MediaPipeFaceResults,
+    FaceProviderProps,
+} from "./face/types";
+export { useFaceTrackingDevice as useFaceControl } from "./face/hooks/useFaceTrackingDevice";
+export { FaceProvider } from "./face/FaceProvider";

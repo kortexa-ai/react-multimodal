@@ -1,21 +1,21 @@
 import { useEffect, useState, useCallback } from "react";
-import { Hand, HandMetal, Video, VideoOff } from "lucide-react";
-import { useCamera, useHandsControl } from "../../../index";
+import { User, UserCheck, Video, VideoOff } from "lucide-react";
+import { useCamera, useBodyControl } from "../../../index";
 import CameraView from "../../common/src/CameraView";
 import StatusDot from "../../common/src/StatusDot";
 
 function ProviderDemo() {
     const cam = useCamera();
-    const hands = useHandsControl();
+    const body = useBodyControl();
 
     const [isCameraOn, setIsCameraOn] = useState(cam?.isRecording || false);
     const [cameraErrorMessage, setCameraErrorMessage] = useState("");
     const [currentStream, setCurrentStream] = useState(null);
-    const [videoElementForHands, setVideoElementForHands] = useState(null);
+    const [videoElementForBody, setVideoElementForBody] = useState(null);
 
-    const [isHandTracking, setIsHandTracking] = useState(false);
-    const [handsErrorMessage, setHandsErrorMessage] = useState("");
-    const [detectedHandData, setDetectedHandData] = useState(null);
+    const [isBodyTracking, setIsBodyTracking] = useState(false);
+    const [bodyErrorMessage, setBodyErrorMessage] = useState("");
+    const [detectedBodyData, setDetectedBodyData] = useState(null);
 
     useEffect(() => {
         const handleStream = (stream) => {
@@ -42,7 +42,7 @@ function ProviderDemo() {
         if (!cam) return;
 
         const handleCamError = (error) => {
-            console.error("Camera Error in Hands Demo:", error);
+            console.error("Camera Error in Body Demo:", error);
             setCameraErrorMessage(
                 typeof error === "string"
                     ? error
@@ -76,38 +76,38 @@ function ProviderDemo() {
     }, [cam]);
 
     useEffect(() => {
-        if (!hands) return;
+        if (!body) return;
 
         const handleData = (data) => {
-            setDetectedHandData(data);
-            setIsHandTracking(true);
-            setHandsErrorMessage("");
+            setDetectedBodyData(data);
+            setIsBodyTracking(true);
+            setBodyErrorMessage("");
         };
 
         const handleError = (error) => {
-            console.error("Hands error in demo:", error);
-            setHandsErrorMessage(error.message || "Hand tracking error");
-            setIsHandTracking(false);
+            console.error("Body error in demo:", error);
+            setBodyErrorMessage(error.message || "Body tracking error");
+            setIsBodyTracking(false);
         };
 
-        const dataId = hands.addHandsDataListener(handleData);
-        const errorId = hands.addErrorListener(handleError);
+        const dataId = body.addBodyDataListener(handleData);
+        const errorId = body.addErrorListener(handleError);
 
         return () => {
-            hands.removeHandsDataListener(dataId);
-            hands.removeErrorListener(errorId);
+            body.removeBodyDataListener(dataId);
+            body.removeErrorListener(errorId);
         };
-    }, [hands]);
+    }, [body]);
 
     const handleToggleCamera = useCallback(async () => {
         if (!cam) return;
         setCameraErrorMessage("");
         try {
             if (cam.isRecording) {
-                if (isHandTracking && hands) {
-                    hands.stopTracking();
-                    setIsHandTracking(false);
-                    setDetectedHandData(null);
+                if (isBodyTracking && body) {
+                    body.stopTracking();
+                    setIsBodyTracking(false);
+                    setDetectedBodyData(null);
                 }
                 cam.stop();
             } else {
@@ -117,78 +117,97 @@ function ProviderDemo() {
             console.error("Failed to toggle camera:", error);
             setCameraErrorMessage(error.message || "Failed to toggle camera");
         }
-    }, [cam, hands, isHandTracking]);
+    }, [cam, body, isBodyTracking]);
 
-    const handleToggleHandTracking = useCallback(async () => {
-        setHandsErrorMessage("");
-        if (!hands) {
-            setHandsErrorMessage("Hands provider not available.");
+    const handleToggleBodyTracking = useCallback(async () => {
+        setBodyErrorMessage("");
+        if (!body) {
+            setBodyErrorMessage("Body provider not available.");
             return;
         }
 
-        if (isHandTracking) {
-            hands.stopTracking();
-            setIsHandTracking(false);
-            setDetectedHandData(null);
+        if (isBodyTracking) {
+            body.stopTracking();
+            setIsBodyTracking(false);
+            setDetectedBodyData(null);
         } else {
             if (!isCameraOn) {
-                setHandsErrorMessage(
-                    "Camera must be on to start hand tracking."
+                setBodyErrorMessage(
+                    "Camera must be on to start body tracking."
                 );
                 return;
             }
-            if (!videoElementForHands) {
-                setHandsErrorMessage(
-                    "Video element not yet available for hand tracking."
+            if (!videoElementForBody) {
+                setBodyErrorMessage(
+                    "Video element not yet available for body tracking."
                 );
                 return;
             }
             if (
-                !videoElementForHands.srcObject ||
-                !videoElementForHands.srcObject.active
+                !videoElementForBody.srcObject ||
+                !videoElementForBody.srcObject.active
             ) {
-                setHandsErrorMessage(
+                setBodyErrorMessage(
                     "Video element does not have an active stream."
                 );
                 return;
             }
             try {
-                hands.startTracking(videoElementForHands);
-                // If startTracking itself doesn't set isHandTracking,
+                body.startTracking(videoElementForBody);
+                // If startTracking itself doesn't set isBodyTracking,
                 // we might optimistically set it here,
                 // but let's wait for data/error events first as per current design.
             } catch (error) {
                 console.error(
-                    "Error directly from hands.startTracking call:",
+                    "Error directly from body.startTracking call:",
                     error
                 );
-                setHandsErrorMessage(
-                    error.message || "Failed to start hand tracking."
+                setBodyErrorMessage(
+                    error.message || "Failed to start body tracking."
                 );
-                setIsHandTracking(false); // Ensure it's false if start failed
+                setIsBodyTracking(false); // Ensure it's false if start failed
             }
         }
-    }, [isCameraOn, videoElementForHands, hands, isHandTracking]);
+    }, [isCameraOn, videoElementForBody, body, isBodyTracking]);
 
     return (
         <div className="card-container">
-            <h2 className="card-title">Hands Provider Demo</h2>
+            <h2 className="card-title">Body Provider Demo</h2>
             <div className="camera-view-container">
                 <CameraView
                     stream={currentStream}
-                    onVideoElementReady={setVideoElementForHands}
-                    handsData={detectedHandData}
-                    showHands={true}
+                    onVideoElementReady={setVideoElementForBody}
+                    bodyData={detectedBodyData}
+                    showBodies={true}
                 />
+                {isBodyTracking && detectedBodyData && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                    }}>
+                        🚶 Bodies Detected: {detectedBodyData.detectedBodies?.length || 0}
+                        {detectedBodyData.detectedBodies?.[0]?.landmarks && (
+                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                                Landmarks: {detectedBodyData.detectedBodies[0].landmarks.length} tracked
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             {cameraErrorMessage && (
                 <p className="error-message">
                     Camera Error: {cameraErrorMessage}
                 </p>
             )}
-            {handsErrorMessage && (
+            {bodyErrorMessage && (
                 <p className="error-message">
-                    Hands Error: {handsErrorMessage}
+                    Body Error: {bodyErrorMessage}
                 </p>
             )}
             <div className="button-row">
@@ -203,17 +222,17 @@ function ProviderDemo() {
                 <span className="control-separator"></span>
 
                 <button
-                    onClick={handleToggleHandTracking}
+                    onClick={handleToggleBodyTracking}
                     disabled={!isCameraOn}
                     title={
-                        isHandTracking
-                            ? "Stop Hand Tracking"
-                            : "Start Hand Tracking"
+                        isBodyTracking
+                            ? "Stop Body Tracking"
+                            : "Start Body Tracking"
                     }
                 >
-                    {isHandTracking ? <HandMetal /> : <Hand />}
+                    {isBodyTracking ? <UserCheck /> : <User />}
                 </button>
-                <StatusDot isActive={isHandTracking} />
+                <StatusDot isActive={isBodyTracking} />
             </div>
         </div>
     );
