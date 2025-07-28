@@ -30,7 +30,7 @@ export default tseslint.config(
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",
-            globals: globals.browser,
+            globals: { ...globals.browser, ...globals.node },
         },
     },
     {
@@ -51,7 +51,7 @@ export default tseslint.config(
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",
-            globals: globals.browser,
+            globals: { ...globals.browser, ...globals.node },
             parser: tseslint.parser,
             parserOptions: {
                 project: ["./tsconfig.{app,node}.json"],
