@@ -52,6 +52,7 @@
         "typecheck": "tsc -p tsconfig.app.json --noEmit",
         "build": "vite build --mode production",
         "build:nomin": "vite build --mode production --minify false --sourcemap inline",
+        "build:demo": "cd src/examples/common && npm ci && npm run build && cd ../hands && npm ci && npm run build",
         "validate": "npm run typecheck && npm run lint",
         "prepublishOnly": "npm run clean:examples && npm run validate && npm run build"
     },

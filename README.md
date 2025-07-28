@@ -4,6 +4,10 @@
 
 `react-multimodal` is a comprehensive React library designed to simplify the integration of various media inputs and advanced AI-driven tracking capabilities into your web applications. It provides a set of easy-to-use React components and hooks, abstracting away the complexities of managing media streams, permissions, and real-time AI model processing (like MediaPipe for hand and body tracking).
 
+## Demo
+
+[Live Demo](https://kortexa-ai.github.io/react-multimodal/) - Interactive hand tracking demo showcasing MediaPipe integration
+
 ## Why use `react-multimodal`?
 
 -   **Simplified Media Access:** Get up and running with camera and microphone feeds in minutes.
