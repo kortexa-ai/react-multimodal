@@ -23,12 +23,12 @@ const BODY_CONNECTIONS = [
     [0, 1], [1, 2], [2, 3], [3, 7],
     [0, 4], [4, 5], [5, 6], [6, 8],
     [9, 10],
-    
+
     // Torso
     [11, 12], [11, 13], [12, 14], [13, 15], [14, 16],
     [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
     [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32],
-    
+
     // Arms
     [15, 17], [16, 18], [17, 19], [18, 20], [19, 21], [20, 22],
     [15, 21], [16, 22]
@@ -41,23 +41,23 @@ const FACE_CONNECTIONS = [
     [288, 397], [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152], [152, 148], [148, 176], [176, 149], [149, 150],
     [150, 136], [136, 172], [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], [162, 21], [21, 54], [54, 103],
     [103, 67], [67, 109], [109, 10],
-    
+
     // Left eye
     [33, 7], [7, 163], [163, 144], [144, 145], [145, 153], [153, 154], [154, 155], [155, 133], [133, 173], [173, 157], [157, 158],
     [158, 159], [159, 160], [160, 161], [161, 246], [246, 33],
-    
-    // Right eye  
+
+    // Right eye
     [362, 382], [382, 381], [381, 380], [380, 374], [374, 373], [373, 390], [390, 249], [249, 263], [263, 466], [466, 388], [388, 387],
     [387, 386], [386, 385], [385, 384], [384, 398], [398, 362],
-    
+
     // Nose
     [19, 94], [94, 125], [125, 141], [141, 235], [235, 31], [31, 228], [228, 229], [229, 230], [230, 231], [231, 232], [232, 233],
     [233, 244], [244, 245], [245, 122], [122, 6], [6, 202], [202, 214], [214, 234], [234, 19],
-    
+
     // Mouth outer
     [61, 84], [84, 17], [17, 314], [314, 405], [405, 320], [320, 307], [307, 375], [375, 321], [321, 308], [308, 324], [324, 318],
     [318, 402], [402, 317], [317, 14], [14, 87], [87, 178], [178, 88], [88, 95], [95, 78], [78, 61],
-    
+
     // Mouth inner
     [78, 95], [95, 88], [88, 178], [178, 87], [87, 14], [14, 317], [317, 402], [402, 318], [318, 324], [324, 308], [308, 415],
     [415, 310], [310, 311], [311, 312], [312, 13], [13, 82], [82, 81], [81, 80], [80, 78]
@@ -71,17 +71,17 @@ const BODY_KEYPOINTS = {
     rightEyeInner: 4, rightEye: 5, rightEyeOuter: 6,
     leftEar: 7, rightEar: 8,
     mouthLeft: 9, mouthRight: 10,
-    
+
     // Upper body
     leftShoulder: 11, rightShoulder: 12,
     leftElbow: 13, rightElbow: 14,
     leftWrist: 15, rightWrist: 16,
-    
+
     // Hands
     leftPinky: 17, rightPinky: 18,
     leftIndex: 19, rightIndex: 20,
     leftThumb: 21, rightThumb: 22,
-    
+
     // Lower body
     leftHip: 23, rightHip: 24,
     leftKnee: 25, rightKnee: 26,
@@ -97,15 +97,15 @@ const FACE_KEYPOINTS = {
     rightEyeCenter: 473, // Iris center (if available) or use 362 for right eye center
     leftEyeCorners: [33, 133], // Left eye inner and outer corners
     rightEyeCorners: [362, 263], // Right eye inner and outer corners
-    
+
     // Nose
     noseTip: 1,
     noseBase: [19, 94],
-    
+
     // Mouth
     mouthCorners: [61, 291],
     mouthCenter: [13, 14],
-    
+
     // Face outline key points
     chinTip: 152,
     foreheadCenter: 9,
@@ -139,7 +139,6 @@ const FINGERTIP_COLORS = {
 
 // Body-specific colors
 const BODY_CONNECTION_COLOR = 'orange';
-const BODY_LANDMARK_COLOR = 'red';
 const BODY_KEYPOINT_COLORS = {
     face: 'yellow',
     upperBody: 'lime',
@@ -149,7 +148,6 @@ const BODY_KEYPOINT_COLORS = {
 
 // Face-specific colors
 const FACE_CONNECTION_COLOR = 'cyan';
-const FACE_LANDMARK_COLOR = 'yellow';
 const FACE_KEYPOINT_COLORS = {
     eyes: 'lime',
     nose: 'orange',
@@ -262,7 +260,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                 const videoW = videoElement.videoWidth;
                 const videoH = videoElement.videoHeight;
 
-                if (!videoW || !videoH || isNaN(videoW) || isNaN(videoH)) {
+                if (!videoW || !videoH || Number.isNaN(videoW) || Number.isNaN(videoH)) {
                     return;
                 }
                 const videoAspect = videoW / videoH;
@@ -362,23 +360,20 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                     if (!videoElement || !videoTextureRef.current) return;
                     const videoW = videoElement.videoWidth;
                     const videoH = videoElement.videoHeight;
-                    if (!videoW || !videoH || isNaN(videoW) || isNaN(videoH))
+                    if (!videoW || !videoH || Number.isNaN(videoW) || Number.isNaN(videoH))
                         return;
                     const videoAspect = videoW / videoH;
                     const planeHeight = 1;
                     const planeWidth = planeHeight * videoAspect;
 
-                    if (
-                        videoPlaneRef.current &&
-                        videoPlaneRef.current.geometry
-                    ) {
+                    if (videoPlaneRef.current?.geometry) {
                         // Dispose old geometry
                         videoPlaneRef.current.geometry.dispose();
                         // Create and assign new geometry
                         videoPlaneRef.current.geometry =
                             new THREE.PlaneGeometry(planeWidth, planeHeight);
                     }
-                    videoElement  
+                    videoElement
                         .play()
                         .catch((e) =>
                             console.error(
@@ -405,19 +400,19 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                 }
             }
             if (
-                rendererRef.current &&
-                rendererRef.current.domElement &&
-                mountRef.current &&
-                mountRef.current.contains(rendererRef.current.domElement)
+                rendererRef.current?.domElement &&
+                mountRef.current?.contains(rendererRef.current.domElement)
             ) {
                 mountRef.current.removeChild(rendererRef.current.domElement);
             }
-            if (videoTextureRef.current) videoTextureRef.current.dispose();
-            if (videoPlaneRef.current && videoPlaneRef.current.geometry)
+            if (videoTextureRef.current)
+                videoTextureRef.current.dispose();
+            if (videoPlaneRef.current?.geometry)
                 videoPlaneRef.current.geometry.dispose();
-            if (videoPlaneRef.current && videoPlaneRef.current.material)
+            if (videoPlaneRef.current?.material)
                 videoPlaneRef.current.material.dispose();
-            if (rendererRef.current) rendererRef.current.dispose();
+            if (rendererRef.current)
+                rendererRef.current.dispose();
             rendererRef.current = null;
             sceneRef.current = null;
             cameraRef.current = null; // Clear refs
@@ -442,7 +437,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                 const videoW = videoElement.videoWidth;
                 const videoH = videoElement.videoHeight;
 
-                if (!videoW || !videoH || isNaN(videoW) || isNaN(videoH)) {
+                if (!videoW || !videoH || Number.isNaN(videoW) || Number.isNaN(videoH)) {
                     return;
                 }
                 const videoAspect = videoW / videoH;
@@ -521,7 +516,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
             }
             // videoElement is persisted via ref, not removed from DOM here unless mountRef.current is cleared
         };
-    }, [stream, onVideoElementReady]); // Effect dependencies
+    }, [stream, onVideoElementReady, mirrorMode]); // Effect dependencies
 
     // Effect for ResizeObserver to update overlay canvas dimensions
     useEffect(() => {
@@ -529,7 +524,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
         if (!currentMount) return;
 
         const resizeObserver = new ResizeObserver(entries => {
-            for (let entry of entries) {
+            for (const entry of entries) {
                 setOverlayWidth(entry.contentRect.width);
                 setOverlayHeight(entry.contentRect.height);
             }
@@ -767,7 +762,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                     left: 0,
                     // width and height are controlled by canvas.width/height attributes for drawing surface size
                     // CSS width/height 100% ensures it stretches to the parent's dimensions for layout
-                    width: '100%', 
+                    width: '100%',
                     height: '100%',
                     pointerEvents: 'none', // Allow interactions with elements below
                 }}

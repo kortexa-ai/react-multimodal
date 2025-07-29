@@ -101,7 +101,7 @@ function ProviderDemo() {
     }, [media.mic]);
 
     const handleStartAllMedia = useCallback(async () => {
-        if (media && media.startMedia) {
+        if (media?.startMedia) {
             try {
                 await media.startMedia();
             } catch (err) {
@@ -111,7 +111,7 @@ function ProviderDemo() {
     }, [media]);
 
     const handleStopAllMedia = useCallback(() => {
-        if (media && media.stopMedia) {
+        if (media?.stopMedia) {
             media.stopMedia();
         }
     }, [media]);
@@ -253,6 +253,7 @@ function ProviderDemo() {
             <div className="button-row bottom-button-row">
                 <button
                     onClick={handleStartAllMedia}
+                    type="button"
                     disabled={
                         !media ||
                         (media.isAudioActive &&
@@ -267,6 +268,7 @@ function ProviderDemo() {
                 </button>
                 <button
                     onClick={handleStopAllMedia}
+                    type="button"
                     disabled={
                         !media ||
                         (!media.isAudioActive &&
@@ -284,6 +286,7 @@ function ProviderDemo() {
 
                 <button
                     onClick={handleToggleCamera}
+                    type="button"
                     disabled={!media.cam}
                     title={media.isVideoActive ? "Stop Camera" : "Start Camera"}
                 >
@@ -295,6 +298,7 @@ function ProviderDemo() {
 
                 <button
                     onClick={handleToggleMicrophone}
+                    type="button"
                     disabled={!media.mic}
                     title={
                         media.isAudioActive
@@ -310,6 +314,7 @@ function ProviderDemo() {
                 {/* Hand tracking toggle button */}
                 <button
                     onClick={handleToggleHands}
+                    type="button"
                     disabled={
                         !media.hands ||
                         !media.isVideoActive ||
@@ -332,6 +337,7 @@ function ProviderDemo() {
                 {/* Body tracking toggle button */}
                 <button
                     onClick={handleToggleBody}
+                    type="button"
                     disabled={
                         !media.body ||
                         !media.isVideoActive ||
@@ -354,6 +360,7 @@ function ProviderDemo() {
                 {/* Face tracking toggle button */}
                 <button
                     onClick={handleToggleFace}
+                    type="button"
                     disabled={
                         !media.face ||
                         !media.isVideoActive ||
