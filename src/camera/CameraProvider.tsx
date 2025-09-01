@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, type PropsWithChildren } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { CameraContext } from './context';
 import { useCameraDevice } from './hooks/useCameraDevice';
 import { cameraDispatcher } from './types';
@@ -28,7 +29,7 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
         ...useCameraProps,
         onStream: (newStream) => {
             useCameraProps.onStream?.(newStream);
-            cameraDispatcher.dispatch('streamChanged', newStream);
+            cameraDispatcher.dispatch('stream', newStream);
         },
         onError: (error) => {
             useCameraProps.onError?.(error);
@@ -39,13 +40,13 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
     const startCamera = useCallback(async () => {
         try {
             await camStart();
-            cameraDispatcher.dispatch('started');
+            cameraDispatcher.dispatch('start');
         } catch (err) {
             let errorMessageText = 'Failed to start camera';
             if (err instanceof Error) {
-                errorMessageText += ': ' + err.message;
+                errorMessageText += `: ${err.message}`;
             } else {
-                errorMessageText += ': ' + String(err);
+                errorMessageText += `: ${String(err)}`;
             }
             cameraDispatcher.dispatch('error', errorMessageText);
             throw err; // Re-throw the error
@@ -55,9 +56,9 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
     const stopCamera = useCallback(() => {
         try {
             camStop();
-            cameraDispatcher.dispatch('stopped');
+            cameraDispatcher.dispatch('stop');
         } catch (err) {
-            const errorMessage = `Failed to stop camera: ${(err as Error).message}`;
+            const errorMessage = `Failed to stop camera: ${String(err)}`;
             cameraDispatcher.dispatch('error', errorMessage);
         }
     }, [camStop]);
@@ -71,7 +72,7 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
             // The facingMode state will update, and then an event can be dispatched.
             // This requires a useEffect in the provider listening to 'facingMode' from useCamera
         } catch (err) {
-            const errorMessage = `Failed to flip camera: ${(err as Error).message}`;
+            const errorMessage = `Failed to flip camera: ${String(err)}`;
             cameraDispatcher.dispatch('error', errorMessage);
         }
     }, [camFlip]); // Removed facingMode dependency
@@ -81,7 +82,7 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
             await camSetDevice(deviceId);
             // Stream change will be handled by onStreamChange in useCamera
         } catch (err) {
-            const errorMessage = `Failed to set device: ${(err as Error).message}`;
+            const errorMessage = `Failed to set device: ${String(err)}`;
             cameraDispatcher.dispatch('error', errorMessage);
         }
     }, [camSetDevice]);
@@ -93,7 +94,7 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
 
     // Listener management functions
     const addStreamListener = useCallback((consumerListener: CameraStreamHandler) => {
-        const id = `kortexa-camera-stream-${Date.now()}`;
+        const id = `kortexa-camera-stream-${uuidv4()}`;
         const dispatcherListener = (data?: MediaStream | undefined) => {
             consumerListener(data);
         };
@@ -105,25 +106,25 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
     }, []);
 
     const addStartListener = useCallback((listener: CameraLifeCycleHandler) => {
-        const id = `kortexa-camera-started-${Date.now()}`;
-        cameraDispatcher.addListener('started', { id, listener });
+        const id = `kortexa-camera-start-${uuidv4()}`;
+        cameraDispatcher.addListener('start', { id, listener });
         return id;
     }, []);
     const removeStartListener = useCallback((id: string) => {
-        cameraDispatcher.removeListener('started', id);
+        cameraDispatcher.removeListener('start', id);
     }, []);
 
     const addStopListener = useCallback((listener: CameraLifeCycleHandler) => {
-        const id = `kortexa-camera-stopped-${Date.now()}`;
-        cameraDispatcher.addListener('stopped', { id, listener });
+        const id = `kortexa-camera-stop-${uuidv4()}`;
+        cameraDispatcher.addListener('stop', { id, listener });
         return id;
     }, []);
     const removeStopListener = useCallback((id: string) => {
-        cameraDispatcher.removeListener('stopped', id);
+        cameraDispatcher.removeListener('stop', id);
     }, []);
 
     const addFacingModeListener = useCallback((consumerListener: CameraFacingModeHandler) => {
-        const id = `kortexa-camera-facingMode-${Date.now()}`;
+        const id = `kortexa-camera-facingMode-${uuidv4()}`;
         const dispatcherListener = (data?: CameraFacingMode | undefined) => {
             if (data !== undefined) {
                 consumerListener(data);
@@ -137,7 +138,7 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
     }, []);
 
     const addErrorListener = useCallback((consumerListener: CameraErrorHandler) => {
-        const id = `kortexa-camera-error-${Date.now()}`;
+        const id = `kortexa-camera-error-${uuidv4()}`;
         const dispatcherListener = (data?: string | undefined) => {
             if (data !== undefined) {
                 consumerListener(data);

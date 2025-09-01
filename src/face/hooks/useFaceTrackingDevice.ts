@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type {
     DetectedFace,
@@ -93,19 +94,19 @@ export function useFaceTrackingDevice({
                 const face: DetectedFace = {
                     landmarks: landmarks,
                 };
-                
+
                 // Add blendshapes if available and requested
                 if (outputFaceBlendshapes && landmarkResults.faceBlendshapes && landmarkResults.faceBlendshapes[index]) {
                     face.blendshapes = landmarkResults.faceBlendshapes[index].categories;
                 }
-                
+
                 // Add transformation matrix if available and requested
                 if (outputTransformationMatrix && landmarkResults.facialTransformationMatrixes && landmarkResults.facialTransformationMatrixes[index]) {
                     // Convert Matrix to number array - MediaPipe Matrix has data property
                     const matrix = landmarkResults.facialTransformationMatrixes[index];
                     face.transformationMatrix = matrix.data ? Array.from(matrix.data) : [];
                 }
-                
+
                 // Calculate bounding box from landmarks
                 if (landmarks.length > 0) {
                     let minX = 1, minY = 1, maxX = 0, maxY = 0;
@@ -122,7 +123,7 @@ export function useFaceTrackingDevice({
                         height: maxY - minY
                     };
                 }
-                
+
                 detectedFaces.push(face);
             });
         }
@@ -138,8 +139,9 @@ export function useFaceTrackingDevice({
         setFaceData(faceData);
         onFaceDataRef.current?.(faceData);
         faceDataListenersRef.current.forEach(
-            (listener: (data: FaceData) => void, _key: string) =>
-                listener(faceData)
+            (listener: (data: FaceData) => void, _key: string) => {
+                listener(faceData);
+            }
         );
 
         if (onResultsRef.current) {
@@ -151,8 +153,9 @@ export function useFaceTrackingDevice({
                 setCurrentError(errorMessage);
                 if (onErrorRef.current) onErrorRef.current(errorMessage);
                 errorListenersRef.current.forEach(
-                    (listener: (error: string) => void, _key: string) =>
-                        listener(errorMessage)
+                    (listener: (error: string) => void, _key: string) => {
+                        listener(errorMessage);
+                    }
                 );
             }
         }
@@ -247,8 +250,9 @@ export function useFaceTrackingDevice({
             setCurrentError(errorMessage);
             if (onErrorRef.current) onErrorRef.current(errorMessage);
             errorListenersRef.current.forEach(
-                (listener: (error: string) => void, _key: string) =>
-                    listener(errorMessage)
+                (listener: (error: string) => void, _key: string) => {
+                    listener(errorMessage);
+                }
             );
         }
 
@@ -271,8 +275,9 @@ export function useFaceTrackingDevice({
                 if (onErrorRef.current)
                     onErrorRef.current("FaceLandmarker not initialized.");
                 errorListenersRef.current.forEach(
-                    (listener: (error: string) => void, _key: string) =>
-                        listener("FaceLandmarker not initialized.")
+                    (listener: (error: string) => void, _key: string) => {
+                        listener("FaceLandmarker not initialized.");
+                    }
                 );
                 return;
             }
@@ -290,16 +295,14 @@ export function useFaceTrackingDevice({
 
             if (onTrackingStartedRef.current) onTrackingStartedRef.current();
             startListenersRef.current.forEach(
-                (listener: () => void, _key: string) => listener()
+                (listener: () => void, _key: string) => {
+                    listener();
+                }
             );
             setCurrentError(null);
         },
         [
             sendFrame,
-            onTrackingStartedRef,
-            startListenersRef,
-            onErrorRef,
-            errorListenersRef,
             setCurrentError,
         ]
     );
@@ -316,10 +319,12 @@ export function useFaceTrackingDevice({
         }
 
         if (onTrackingStoppedRef.current) onTrackingStoppedRef.current();
-        stopListenersRef.current.forEach((listener: () => void, _key: string) =>
-            listener()
+        stopListenersRef.current.forEach(
+            (listener: () => void, _key: string) => {
+                listener();
+            }
         );
-    }, [isTracking, onTrackingStoppedRef, stopListenersRef]);
+    }, [isTracking]);
 
     return {
         isTracking,
@@ -330,7 +335,7 @@ export function useFaceTrackingDevice({
         getFaceLandmarker: () => faceLandmarkerRef.current,
         getFaceDetector: () => null, // Not implemented in this version
         addFaceDataListener: (listener: (data: FaceData) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-face-data-${uuidv4()}`;
             faceDataListenersRef.current.set(id, listener);
             return id;
         },
@@ -338,7 +343,7 @@ export function useFaceTrackingDevice({
             faceDataListenersRef.current.delete(listenerId);
         },
         addErrorListener: (listener: (error: string) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-face-error-${uuidv4()}`;
             errorListenersRef.current.set(id, listener);
             return id;
         },
@@ -346,7 +351,7 @@ export function useFaceTrackingDevice({
             errorListenersRef.current.delete(listenerId);
         },
         addStartListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-face-start-${uuidv4()}`;
             startListenersRef.current.set(id, listener);
             return id;
         },
@@ -354,7 +359,7 @@ export function useFaceTrackingDevice({
             startListenersRef.current.delete(listenerId);
         },
         addStopListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-face-stop-${uuidv4()}`;
             stopListenersRef.current.set(id, listener);
             return id;
         },

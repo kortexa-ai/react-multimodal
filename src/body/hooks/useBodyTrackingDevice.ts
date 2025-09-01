@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { PoseLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type {
     DetectedBody,
@@ -95,13 +96,13 @@ export function useBodyTrackingDevice({
                     landmarks: landmarks,
                     worldLandmarks: landmarkResults.worldLandmarks?.[index] || [],
                 };
-                
+
                 if (outputSegmentationMasks && landmarkResults.segmentationMasks) {
                     // Convert segmentation mask to ImageData if needed
                     // Note: Implementation depends on the actual format returned by MediaPipe
                     body.segmentationMasks = []; // Placeholder for segmentation mask conversion
                 }
-                
+
                 detectedBodies.push(body);
             });
         }
@@ -117,8 +118,9 @@ export function useBodyTrackingDevice({
         setBodyData(bodyData);
         onBodyDataRef.current?.(bodyData);
         bodyDataListenersRef.current.forEach(
-            (listener: (data: BodyData) => void, _key: string) =>
-                listener(bodyData)
+            (listener: (data: BodyData) => void, _key: string) => {
+                listener(bodyData);
+            }
         );
 
         if (onResultsRef.current) {
@@ -130,8 +132,9 @@ export function useBodyTrackingDevice({
                 setCurrentError(errorMessage);
                 if (onErrorRef.current) onErrorRef.current(errorMessage);
                 errorListenersRef.current.forEach(
-                    (listener: (error: string) => void, _key: string) =>
-                        listener(errorMessage)
+                    (listener: (error: string) => void, _key: string) => {
+                        listener(errorMessage);
+                    }
                 );
             }
         }
@@ -224,8 +227,9 @@ export function useBodyTrackingDevice({
             setCurrentError(errorMessage);
             if (onErrorRef.current) onErrorRef.current(errorMessage);
             errorListenersRef.current.forEach(
-                (listener: (error: string) => void, _key: string) =>
-                    listener(errorMessage)
+                (listener: (error: string) => void, _key: string) => {
+                    listener(errorMessage);
+                }
             );
         }
 
@@ -248,8 +252,9 @@ export function useBodyTrackingDevice({
                 if (onErrorRef.current)
                     onErrorRef.current("PoseLandmarker not initialized.");
                 errorListenersRef.current.forEach(
-                    (listener: (error: string) => void, _key: string) =>
-                        listener("PoseLandmarker not initialized.")
+                    (listener: (error: string) => void, _key: string) => {
+                        listener("PoseLandmarker not initialized.");
+                    }
                 );
                 return;
             }
@@ -267,7 +272,9 @@ export function useBodyTrackingDevice({
 
             if (onTrackingStartedRef.current) onTrackingStartedRef.current();
             startListenersRef.current.forEach(
-                (listener: () => void, _key: string) => listener()
+                (listener: () => void, _key: string) => {
+                    listener();
+                }
             );
             setCurrentError(null);
         },
@@ -293,8 +300,10 @@ export function useBodyTrackingDevice({
         }
 
         if (onTrackingStoppedRef.current) onTrackingStoppedRef.current();
-        stopListenersRef.current.forEach((listener: () => void, _key: string) =>
-            listener()
+        stopListenersRef.current.forEach(
+            (listener: () => void, _key: string) => {
+                listener();
+            }
         );
     }, [isTracking, onTrackingStoppedRef, stopListenersRef]);
 
@@ -306,7 +315,7 @@ export function useBodyTrackingDevice({
         stopTracking,
         getPoseLandmarker: () => poseLandmarkerRef.current,
         addBodyDataListener: (listener: (data: BodyData) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-body-data-${uuidv4()}`;
             bodyDataListenersRef.current.set(id, listener);
             return id;
         },
@@ -314,7 +323,7 @@ export function useBodyTrackingDevice({
             bodyDataListenersRef.current.delete(listenerId);
         },
         addErrorListener: (listener: (error: string) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-body-error-${uuidv4()}`;
             errorListenersRef.current.set(id, listener);
             return id;
         },
@@ -322,7 +331,7 @@ export function useBodyTrackingDevice({
             errorListenersRef.current.delete(listenerId);
         },
         addStartListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-body-start-${uuidv4()}`;
             startListenersRef.current.set(id, listener);
             return id;
         },
@@ -330,7 +339,7 @@ export function useBodyTrackingDevice({
             startListenersRef.current.delete(listenerId);
         },
         addStopListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-body-stop-${uuidv4()}`;
             stopListenersRef.current.set(id, listener);
             return id;
         },

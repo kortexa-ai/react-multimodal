@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { HandLandmarker, GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
 import type {
     DetectedHand,
@@ -120,8 +121,9 @@ export function useHandsTrackingDevice({
         setHandsData(handsData);
         onHandsDataRef.current?.(handsData);
         handsDataListenersRef.current.forEach(
-            (listener: (data: HandsData) => void, _key: string) =>
-                listener(handsData)
+            (listener: (data: HandsData) => void, _key: string) => {
+                listener(handsData);
+            }
         );
 
         // Trigger gesture-specific callbacks
@@ -262,8 +264,9 @@ export function useHandsTrackingDevice({
             setCurrentError(errorMessage);
             if (onErrorRef.current) onErrorRef.current(errorMessage);
             errorListenersRef.current.forEach(
-                (listener: (error: string) => void, _key: string) =>
-                    listener(errorMessage)
+                (listener: (error: string) => void, _key: string) => {
+                    listener(errorMessage);
+                }
             );
         }
 
@@ -287,8 +290,9 @@ export function useHandsTrackingDevice({
                 if (onErrorRef.current)
                     onErrorRef.current("HandLandmarker not initialized.");
                 errorListenersRef.current.forEach(
-                    (listener: (error: string) => void, _key: string) =>
-                        listener("HandLandmarker not initialized.")
+                    (listener: (error: string) => void, _key: string) => {
+                        listener("HandLandmarker not initialized.");
+                    }
                 );
                 return;
             }
@@ -306,7 +310,9 @@ export function useHandsTrackingDevice({
 
             if (onTrackingStartedRef.current) onTrackingStartedRef.current();
             startListenersRef.current.forEach(
-                (listener: () => void, _key: string) => listener()
+                (listener: () => void, _key: string) => {
+                    listener();
+                }
             );
             setCurrentError(null);
         },
@@ -332,8 +338,10 @@ export function useHandsTrackingDevice({
         }
 
         if (onTrackingStoppedRef.current) onTrackingStoppedRef.current();
-        stopListenersRef.current.forEach((listener: () => void, _key: string) =>
-            listener()
+        stopListenersRef.current.forEach(
+            (listener: () => void, _key: string) => {
+                listener();
+            }
         );
     }, [isTracking, onTrackingStoppedRef, stopListenersRef]);
 
@@ -346,7 +354,7 @@ export function useHandsTrackingDevice({
         getHandLandmarker: () => handLandmarkerRef.current,
         getGestureRecognizer: () => gestureRecognizerRef.current,
         addHandsDataListener: (listener: (data: HandsData) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-hands-data-${uuidv4()}`;
             handsDataListenersRef.current.set(id, listener);
             return id;
         },
@@ -354,7 +362,7 @@ export function useHandsTrackingDevice({
             handsDataListenersRef.current.delete(listenerId);
         },
         addErrorListener: (listener: (error: string) => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-hands-error-${uuidv4()}`;
             errorListenersRef.current.set(id, listener);
             return id;
         },
@@ -362,7 +370,7 @@ export function useHandsTrackingDevice({
             errorListenersRef.current.delete(listenerId);
         },
         addStartListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-hands-start-${uuidv4()}`;
             startListenersRef.current.set(id, listener);
             return id;
         },
@@ -370,7 +378,7 @@ export function useHandsTrackingDevice({
             startListenersRef.current.delete(listenerId);
         },
         addStopListener: (listener: () => void) => {
-            const id = Date.now().toString() + Math.random().toString();
+            const id = `kortexa-hands-stop-${uuidv4()}`;
             stopListenersRef.current.set(id, listener);
             return id;
         },
