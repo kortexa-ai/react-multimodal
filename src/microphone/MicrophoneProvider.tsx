@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, type PropsWithChildren } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { MicrophoneContext } from './context';
 import { useMicrophoneDevice } from './hooks/useMicrophoneDevice';
 import { microphoneDispatcher } from './types';
@@ -56,7 +57,7 @@ export function MicrophoneProvider({ children, ...useMicrophoneProps }: PropsWit
     }, [isRecording, micStop]);
 
     const addDataListener = useCallback((listener: MicrophoneDataHandler) => {
-        const id = `kortexa-microphone-data-${Date.now()}`;
+        const id = `kortexa-microphone-data-${uuidv4()}`;
         microphoneDispatcher.addListener('data', { id, listener });
         return id;
     }, []);
@@ -66,7 +67,7 @@ export function MicrophoneProvider({ children, ...useMicrophoneProps }: PropsWit
     }, []);
 
     const addStartListener = useCallback((listener: () => void | Promise<void>) => {
-        const id = `kortexa-microphone-start-${Date.now()}`;
+        const id = `kortexa-microphone-start-${uuidv4()}`;
         microphoneDispatcher.addListener('start', { id, listener });
         return id;
     }, []);
@@ -76,7 +77,7 @@ export function MicrophoneProvider({ children, ...useMicrophoneProps }: PropsWit
     }, []);
 
     const addStopListener = useCallback((listener: () => void) => {
-        const id = `kortexa-microphone-stop-${Date.now()}`;
+        const id = `kortexa-microphone-stop-${uuidv4()}`;
         microphoneDispatcher.addListener('stop', { id, listener });
         return id;
     }, []);
@@ -86,7 +87,7 @@ export function MicrophoneProvider({ children, ...useMicrophoneProps }: PropsWit
     }, []);
 
     const addErrorListener = useCallback((listener: (error?: string) => void) => {
-        const id = `kortexa-microphone-error-${Date.now()}`;
+        const id = `kortexa-microphone-error-${uuidv4()}`;
         microphoneDispatcher.addListener('error', { id, listener });
         return id;
     }, []);
