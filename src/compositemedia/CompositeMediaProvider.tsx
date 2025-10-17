@@ -363,7 +363,7 @@ function InternalMediaOrchestrator({
 
         if (cam && !isVideoActive) {
             try {
-                await cam.start();
+                await cam.start(undefined, cam.facingMode);
                 localCamAttemptOk = true;
             } catch {
                 localCamAttemptOk = false;
@@ -436,10 +436,6 @@ function InternalMediaOrchestrator({
         attemptedHandsStartInCycle, attemptedBodyStartInCycle, attemptedFaceStartInCycle,
         startHandsAsyncInternal, startBodyAsyncInternal, startFaceAsyncInternal,
         currentAudioError, currentVideoError, currentHandsError, currentBodyError, currentFaceError,
-        setCurrentAudioError, setCurrentVideoError, setCurrentHandsError, setCurrentBodyError, setCurrentFaceError,
-        setMediaOrchestrationError, setIsStarting, 
-        setAttemptedHandsStartInCycle, setAttemptedBodyStartInCycle, setAttemptedFaceStartInCycle,
-        setUserExplicitlyStoppedHands, setUserExplicitlyStoppedBody, setUserExplicitlyStoppedFace
     ]);
 
     /**

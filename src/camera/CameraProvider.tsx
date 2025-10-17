@@ -37,21 +37,27 @@ export function CameraProvider({ children, ...useCameraProps }: PropsWithChildre
         }
     });
 
-    const startCamera = useCallback(async () => {
-        try {
-            await camStart();
-            cameraDispatcher.dispatch('start');
-        } catch (err) {
-            let errorMessageText = 'Failed to start camera';
-            if (err instanceof Error) {
-                errorMessageText += `: ${err.message}`;
-            } else {
-                errorMessageText += `: ${String(err)}`;
+    const startCamera = useCallback(
+        async (deviceId?: string, overrideFacingMode?: CameraFacingMode) => {
+            try {
+                const started = await camStart(deviceId, overrideFacingMode);
+                if (started) {
+                    cameraDispatcher.dispatch('start');
+                }
+                return started;
+            } catch (err) {
+                let errorMessageText = 'Failed to start camera';
+                if (err instanceof Error) {
+                    errorMessageText += `: ${err.message}`;
+                } else {
+                    errorMessageText += `: ${String(err)}`;
+                }
+                cameraDispatcher.dispatch('error', errorMessageText);
+                throw err; // Re-throw the error
             }
-            cameraDispatcher.dispatch('error', errorMessageText);
-            throw err; // Re-throw the error
-        }
-    }, [camStart]);
+        },
+        [camStart]
+    );
 
     const stopCamera = useCallback(() => {
         try {

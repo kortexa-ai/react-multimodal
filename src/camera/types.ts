@@ -22,7 +22,10 @@ export interface CameraDevice {
     facingMode: CameraFacingMode;
     availableDevices: MediaDeviceInfo[];
     currentDeviceId: string | undefined;
-    start: (deviceId?: string) => Promise<void>;
+    start: (
+        deviceId?: string,
+        overrideFacingMode?: CameraFacingMode
+    ) => Promise<boolean>;
     stop: () => void;
     toggle: () => void;
     flip: () => void;

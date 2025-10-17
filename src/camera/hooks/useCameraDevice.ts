@@ -71,24 +71,34 @@ export const useCameraDevice = ({
     }, [defaultFacingMode, defaultDeviceId]);
 
     const start = useCallback(
-        async (deviceId?: string) => {
-            const targetDeviceId = deviceId || currentDeviceId;
+        async (
+            deviceId?: string,
+            overrideFacingMode?: CameraFacingMode
+        ): Promise<boolean> => {
+            const targetDeviceId =
+                deviceId !== undefined
+                    ? deviceId
+                    : overrideFacingMode !== undefined
+                    ? undefined
+                    : currentDeviceId;
             if (!targetDeviceId && availableDevices.length === 0) {
                 await getDevices(); // Try to get devices if none are listed
                 // If still no devices, or no targetDeviceId, then error
                 if (availableDevices.length === 0 || !targetDeviceId) {
                     console.error("No camera devices available or selected.");
                     onError?.("No camera devices available or selected.");
-                    return;
+                    return false;
                 }
             }
+
+            const effectiveFacingMode = overrideFacingMode ?? facingMode;
 
             try {
                 const videoConstraints: MediaTrackConstraints = {
                     deviceId: targetDeviceId
                         ? { exact: targetDeviceId }
                         : undefined,
-                    facingMode: !targetDeviceId ? facingMode : undefined, // Only use facingMode if no specific deviceId
+                    facingMode: !targetDeviceId ? effectiveFacingMode : undefined, // Only use facingMode if no specific deviceId
                 };
 
                 if (requestedWidth) {
@@ -116,7 +126,39 @@ export const useCameraDevice = ({
                 setStream(mediaStream);
                 setIsRecording(true);
                 onStream?.(mediaStream);
-                if (targetDeviceId) setCurrentDeviceId(targetDeviceId);
+
+                const [videoTrack] = mediaStream.getVideoTracks();
+                const trackSettings = videoTrack?.getSettings?.()
+                    ? videoTrack.getSettings()
+                    : undefined;
+
+                if (trackSettings && trackSettings.deviceId) {
+                    setCurrentDeviceId(trackSettings.deviceId);
+                } else if (targetDeviceId) {
+                    setCurrentDeviceId(targetDeviceId);
+                }
+
+                if (trackSettings && trackSettings.facingMode) {
+                    const normalizedFacing =
+                        trackSettings.facingMode === "environment"
+                            ? "environment"
+                            : trackSettings.facingMode === "user"
+                            ? "user"
+                            : undefined;
+                    if (
+                        normalizedFacing &&
+                        normalizedFacing !== facingMode
+                    ) {
+                        setFacingMode(normalizedFacing);
+                    }
+                } else if (
+                    overrideFacingMode &&
+                    overrideFacingMode !== facingMode
+                ) {
+                    setFacingMode(overrideFacingMode);
+                }
+
+                return true;
             } catch (err) {
                 console.error("Error accessing camera:", err);
                 onError?.(`Error accessing camera: ${(err as Error).message}`);
@@ -131,9 +173,14 @@ export const useCameraDevice = ({
                                 otherDevice.label || otherDevice.deviceId
                             }`
                         );
-                        await start(otherDevice.deviceId);
+                        const result = await start(
+                            otherDevice.deviceId,
+                            overrideFacingMode
+                        );
+                        if (result) return true;
                     }
                 }
+                return false;
             }
         },
         [
@@ -171,44 +218,69 @@ export const useCameraDevice = ({
     const flip = useCallback(async () => {
         if (!isRecording) return; // Don't flip if camera is off
 
-        const newFacingMode = facingMode === "user" ? "environment" : "user";
-        setFacingMode(newFacingMode);
-        stop(); // Stop current stream
+        const newFacingMode: CameraFacingMode =
+            facingMode === "user" ? "environment" : "user";
+
+        stop(); // Stop current stream before switching
 
         // Find a device that matches the new facing mode
         const newDevice = availableDevices.find((device: MediaDeviceInfo) => {
             const deviceLabel = device.label.toLowerCase();
-            if (newFacingMode === "user")
+            if (newFacingMode === "user") {
                 return (
                     deviceLabel.includes("front") ||
-                    !deviceLabel.includes("back")
+                    deviceLabel.includes("user")
                 );
-            if (newFacingMode === "environment")
-                return deviceLabel.includes("back");
+            }
+            if (newFacingMode === "environment") {
+                return (
+                    deviceLabel.includes("back") ||
+                    deviceLabel.includes("rear") ||
+                    deviceLabel.includes("environment")
+                );
+            }
             return false;
         });
 
+        let started = false;
+
         if (newDevice) {
-            setCurrentDeviceId(newDevice.deviceId);
-            await start(newDevice.deviceId);
+            started = await start(newDevice.deviceId, newFacingMode);
+            if (!started && availableDevices.length > 0) {
+                started = await start(undefined, newFacingMode);
+            }
         } else if (availableDevices.length > 0) {
-            // Fallback: if no specific device matches, try starting with the first available that's not the current one
-            // Or, if only one device, it might support both modes (though less common for built-in)
-            // For simplicity, we'll just try to restart with the new facingMode constraint if no specific device found
-            // This relies on the browser picking a suitable camera for the facingMode
-            setCurrentDeviceId(undefined); // Let the browser choose based on facingMode
-            await start();
+            // Fallback: let the browser select based on facingMode constraint
+            started = await start(undefined, newFacingMode);
         } else {
             onError?.("No alternative camera found for flipping.");
+            return;
         }
-    }, [isRecording, facingMode, stop, start, availableDevices, onError]);
+
+        if (!started) {
+            // Attempt to revert to previous mode if flip failed
+            await start(currentDeviceId, facingMode);
+            return;
+        }
+    }, [
+        isRecording,
+        facingMode,
+        stop,
+        start,
+        availableDevices,
+        onError,
+        currentDeviceId,
+    ]);
 
     const setDevice = useCallback(
         async (deviceId: string) => {
             if (deviceId === currentDeviceId && isRecording) return;
+            const previousDeviceId = currentDeviceId;
             stop();
-            setCurrentDeviceId(deviceId);
-            await start(deviceId);
+            const success = await start(deviceId);
+            if (!success && previousDeviceId) {
+                await start(previousDeviceId);
+            }
         },
         [currentDeviceId, isRecording, stop, start]
     );
