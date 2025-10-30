@@ -103,7 +103,7 @@ function MicrophoneView({ mic }) {
                 );
                 // Ensure targetBarWidth is not NaN or undefined if rms is weird
                 if (
-                    isNaN(targetBarWidth) ||
+                    Number.isNaN(targetBarWidth) ||
                     typeof targetBarWidth === "undefined"
                 )
                     return;
@@ -175,9 +175,8 @@ function MicrophoneView({ mic }) {
 
             const currentRenderer = rendererRef.current;
             if (
-                currentRenderer &&
-                currentRenderer.domElement &&
-                currentMount.contains(currentRenderer.domElement)
+                currentRenderer?.domElement &&
+                currentMount?.contains(currentRenderer.domElement)
             ) {
                 currentMount.removeChild(currentRenderer.domElement);
             }

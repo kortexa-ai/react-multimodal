@@ -393,7 +393,7 @@ function CameraView({ stream, onVideoElementReady, handsData, faceData, bodyData
                 cancelAnimationFrame(animationFrameIdRef.current);
             if (videoElement.srcObject) {
                 const tracks = videoElement.srcObject.getTracks();
-                tracks.forEach((track) => track.stop());
+                tracks.forEach((track) => { track.stop() });
                 videoElement.srcObject = null;
                 if (typeof onVideoElementReady === 'function') {
                     onVideoElementReady(null);
